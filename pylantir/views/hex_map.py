@@ -4,7 +4,7 @@ from PySide6.QtWidgets import QGraphicsView, QGraphicsScene, QTableWidget, QTabl
 from PySide6.QtGui import QPainter, QPen
 from PySide6.QtCore import Qt, QPointF, Signal, QObject
 from collections import defaultdict
-from .hex_tile import HexTile
+from pylantir.views.hex_tile import HexTile
 
 class HexMapView(QGraphicsView):
     # Define custom signals

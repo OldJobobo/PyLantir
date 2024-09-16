@@ -24,3 +24,6 @@ reports/
 # OS Files
 .DS_Store
 Thumbs.db
+*.iss
+*.spec
+/output

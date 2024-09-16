@@ -2,8 +2,8 @@ import json
 from PySide6.QtWidgets import QMainWindow, QFileDialog, QMessageBox, QLineEdit, QTextEdit, QWidget, QVBoxLayout, QTableWidget, QSplitter
 from PySide6.QtGui import QAction, Qt
 
-from ..views.hex_map import HexMapView  # We will create this later
-from ..data.data_manager import DataManager
+from pylantir.views.hex_map import HexMapView  # We will create this later
+from pylantir.data.data_manager import DataManager
 
 class MainWindow(QMainWindow):
     def __init__(self):
