@@ -45,12 +45,26 @@ class MainWindow(QMainWindow):
 
         # Create HexMapView and QTextEdit
         self.data_table = QTableWidget()
-        self.data_table.setRowCount(5)  # Set initial row count
-        self.data_table.setColumnCount(8)  # Set initial column count
-        self.data_table.setHorizontalHeaderLabels(['Faction', 'Faction Nr', 'Unit Nr', 'Unit Name', 'Men', 'Silver', 'Horses', 'Skills'])
+        # self.data_table.setRowCount(5)  # Set initial row count
+        # self.data_table.setColumnCount(8)  # Set initial column count
+        # self.data_table.setHorizontalHeaderLabels(['Status', 'Faction Name', 'Faction Number', 'Avoid', 'Guard', 'Units', 'Role', 'Number'])  # Set initial column headers
         self.data_table.setSortingEnabled(True)
 
+        # Set the grid line color to white
+        self.data_table.setStyleSheet("""
+            QTableView {
+                gridline-color: gray; /* Set the grid line color to light grey */
+                background-color: #191919;  /* Set the background color to dark grey */
+                border: 1px solid grey;
+                padding: 0px;  /* Add padding around the cell content */
+            }
+        """)
+
         self.hex_map_view = HexMapView(self.data_table)
+        self.hex_map_view.report_loaded.connect(self.update_status_bar)
+        self.hex_map_view.hex_selected.connect(self.display_hex_data)
+
+
         self.text_display = QTextEdit()
         self.text_display.setReadOnly(True)  # Make the text display read-only
 
@@ -78,6 +92,111 @@ class MainWindow(QMainWindow):
         # Set central widget
         self.setCentralWidget(central_widget)
 
+        # Create and add the status bar
+        self.statusBar().showMessage("Ready")  # Show a default message when the app starts
+
+    def update_status_bar(self, message):
+        self.statusBar().showMessage(message)
+    
+    def display_hex_data(self, hex_data):
+        """Display hex-specific data (excluding unit data) in the text_display widget with debug output."""
+        self.text_display.clear()  # Clear previous content
+        
+        # Print the entire hex data for debugging
+        print("Debug: Full hex data being loaded:", hex_data)
+
+        # Display basic hex information
+        coordinates = hex_data.get('coordinates', {})
+        
+        # Access 'x' and 'y' using dictionary keys
+        x = coordinates.get('x', 'Unknown')
+        y = coordinates.get('y', 'Unknown')
+        
+        print(f"Debug: Hex Coordinates: {x}, {y}")  # Debug output
+        self.text_display.append(f"Hex Coordinates: {x}, {y}")  # Corrected access
+        
+        # Display terrain type
+        terrain = hex_data.get('terrain', 'Unknown')
+        print(f"Debug: Terrain: {terrain}")  # Debug output
+        self.text_display.append(f"Terrain: {terrain}")
+        
+        # Display population information
+        population = hex_data.get('population', {})
+        population_amount = population.get('amount', 'N/A')
+        population_race = population.get('race', 'N/A')
+        print(f"Debug: Population: {population}")  # Debug output
+        self.text_display.append(f"Population: {population_amount} ({population_race})")
+        
+        # Display tax information
+        tax = hex_data.get('tax', 'N/A')
+        print(f"Debug: Tax: {tax}")  # Debug output
+        if tax != 'N/A':
+            self.text_display.append(f"Tax: {tax}")
+        else:
+            self.text_display.append("Tax: Not available")
+
+        # Display market information (for_sale and wanted)
+        markets = hex_data.get('markets', {})
+        print(f"Debug: Markets: {markets}")  # Debug output
+        for_sale = markets.get('for_sale', [])
+        wanted = markets.get('wanted', [])
+        
+        if for_sale:
+            self.text_display.append("For Sale:")
+            for item in for_sale:
+                item_name = item.get('name', 'Unknown Item')
+                item_amount = item.get('amount', 'N/A')
+                item_price = item.get('price', 'N/A')
+                print(f"Debug: For Sale Item: {item}")  # Debug output
+                self.text_display.append(f"  - {item_amount} {item_name} at {item_price} silver each")
+        else:
+            print("Debug: No items for sale")  # Debug output
+            self.text_display.append("For Sale: None")
+        
+        if wanted:
+            self.text_display.append("Wanted:")
+            for item in wanted:
+                item_name = item.get('name', 'Unknown Item')
+                item_amount = item.get('amount', 'N/A')
+                item_price = item.get('price', 'N/A')
+                print(f"Debug: Wanted Item: {item}")  # Debug output
+                self.text_display.append(f"  - {item_amount} {item_name} at {item_price} silver each")
+        else:
+            print("Debug: No wanted items")  # Debug output
+            self.text_display.append("Wanted: None")
+        
+        # Display wages information
+        wages = hex_data.get('wages', {})
+        wages_amount = wages.get('amount', 'N/A')
+        wages_max = wages.get('max', 'N/A')
+        print(f"Debug: Wages: {wages}")  # Debug output
+        if wages_amount != 'N/A' and wages_max != 'N/A':
+            self.text_display.append(f"Wages: {wages_amount} (Max: {wages_max})")
+        else:
+            self.text_display.append("Wages: Not available")
+        
+        # Check if there are exits
+        exits = hex_data.get('exits', [])
+        print(f"Debug: Exits: {exits}")  # Debug output
+        if exits:
+            self.text_display.append("Exits:")
+            for exit_info in exits:
+                direction = exit_info['direction']
+                neighboring_region = exit_info['region']
+                neighbor_coords = neighboring_region['coordinates']
+                neighbor_terrain = neighboring_region.get('terrain', 'Unknown')
+                neighbor_province = neighboring_region.get('province', 'Unknown')
+                print(f"Debug: Exit {direction} to ({neighbor_coords['x']}, {neighbor_coords['y']}) "
+                    f"in {neighbor_province} ({neighbor_terrain})")  # Debug output
+                self.text_display.append(f"  - {direction} to ({neighbor_coords['x']}, {neighbor_coords['y']}) "
+                                        f"in {neighbor_province} ({neighbor_terrain})")
+        else:
+            print("Debug: No exits found")  # Debug output
+            self.text_display.append("Exits: None")
+
+
+
+    
     def open_turn_report(self):
         options = QFileDialog.Options()
         filename, _ = QFileDialog.getOpenFileName(
@@ -100,6 +219,7 @@ class MainWindow(QMainWindow):
 
             QMessageBox.information(self, 'File Loaded', f'Loaded report: {filename}')
         else:
+            self.statusBar().showMessage("No file selected")
             QMessageBox.warning(self, 'No File', 'No file was selected.')
 
     def display_parsed_data(self):

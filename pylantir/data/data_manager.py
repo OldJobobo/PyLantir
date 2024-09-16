@@ -18,6 +18,19 @@ class DataManager:
                 x = coordinates['x']
                 y = coordinates['y']
                 self.regions[(x, y)] = region
+                
+                # Check for missing fields in the hex data and log a warning
+                missing_fields = []
+                if 'terrain' not in region:
+                    missing_fields.append('terrain')
+                if 'population' not in region:
+                    missing_fields.append('population')
+                if 'products' not in region:
+                    missing_fields.append('products')
+                if 'markets' not in region:
+                    missing_fields.append('markets')
+                if missing_fields:
+                    print(f"Region at ({x}, {y}) is missing fields: {', '.join(missing_fields)}")
 
             print("Report loaded successfully.")
             print(f"Total regions: {len(self.regions)}")
@@ -64,3 +77,27 @@ class DataManager:
             "show_unit_attitudes": admin.get("show_unit_attitudes", False),
             "times_sent": admin.get("times_sent", True)
         }
+    
+    def get_markets(self, x, y):
+        """
+        Retrieve the markets for the region at coordinates (x, y).
+
+        Parameters:
+            x (int): The x-coordinate of the region.
+            y (int): The y-coordinate of the region.
+
+        Returns:
+            dict: A dictionary containing 'for_sale' and 'wanted' markets.
+                  Returns None if the region does not exist or has no markets.
+        """
+        region = self.get_region(x, y)
+        if not region:
+            print(f"No region found at coordinates ({x}, {y}).")
+            return None
+
+        markets = region.get('markets')
+        if not markets:
+            print(f"Region at ({x}, {y}) has no markets data.")
+            return None
+
+        return markets

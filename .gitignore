@@ -15,6 +15,9 @@ venv/
 dist/
 build/
 
+# Reports
+reports/
+
 # Logs
 *.log
 

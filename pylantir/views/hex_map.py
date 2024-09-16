@@ -2,11 +2,15 @@
 
 from PySide6.QtWidgets import QGraphicsView, QGraphicsScene, QTableWidget, QTableWidgetItem
 from PySide6.QtGui import QPainter, QPen
-from PySide6.QtCore import Qt, QPointF
+from PySide6.QtCore import Qt, QPointF, Signal, QObject
 from collections import defaultdict
 from .hex_tile import HexTile
 
 class HexMapView(QGraphicsView):
+    # Define custom signals
+    report_loaded = Signal(str)
+    hex_selected = Signal(dict)  # Emits the full region data
+
     def __init__(self, data_table):
         super().__init__()
         self.scene = QGraphicsScene(self)
@@ -15,11 +19,12 @@ class HexMapView(QGraphicsView):
         self.dragging = False  # Track if we are dragging for panning
         self.last_mouse_pos = QPointF()  # Last mouse position during dragging
         self.selected_hex_tile = None  # Initialize selected_hex_tile
+        self.hex_map_tile_to_region = {}  # Mapping from HexTile to region data
         self.init_ui()
         print(f"HexMapView initialized with data_table: {self.data_table}")
 
     def init_ui(self):
-         # Enable antialiasing for smoother graphics
+        # Enable antialiasing for smoother graphics
         self.setRenderHint(QPainter.Antialiasing)
         # Enable zooming functionality
         self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
@@ -54,7 +59,7 @@ class HexMapView(QGraphicsView):
                     # Place the hex tile
                     hex_tile = HexTile(x, y, terrain, units)
                     self.scene.addItem(hex_tile)
-                    hex_map[(x, y)] = hex_tile  # Store placed hex
+                    self.hex_map_tile_to_region[hex_tile] = region  # Map HexTile to region
 
                     # Process exits and ensure neighbors are placed
                     for exit in region.get('exits', []):
@@ -63,21 +68,31 @@ class HexMapView(QGraphicsView):
                         ny = neighbor_coords['y']
 
                         # Check if the neighbor is already placed
-                        if (nx, ny) not in hex_map:
-                            if self.is_valid_hex_coordinate(nx, ny):
-                                neighbor_terrain = exit['region'].get('terrain', 'unknown')
-                                # Place neighboring hex
-                                neighbor_hex_tile = self.create_and_place_hex(nx, ny, neighbor_terrain, hex_map)
-                                hex_map[(nx, ny)] = neighbor_hex_tile  # Store neighbor hex
+                        if not self.is_valid_hex_coordinate(nx, ny):
+                            continue
+                        if any(
+                            neighbor_hex.x_coord == nx and neighbor_hex.y_coord == ny
+                            for neighbor_hex in self.hex_map_tile_to_region
+                        ):
+                            continue
+
+                        neighbor_terrain = exit['region'].get('terrain', 'unknown')
+                        # Place neighboring hex
+                        neighbor_hex_tile = self.create_and_place_hex(nx, ny, neighbor_terrain, regions_data)
+                        self.hex_map_tile_to_region[neighbor_hex_tile] = exit['region']  # Map neighbor hex
 
             # Adjust the scene
             self.setSceneRect(self.scene.itemsBoundingRect())
             self.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
             print("Map data loaded successfully.")
+            
+            # Emit a signal when the map data is successfully loaded
+            self.report_loaded.emit("Map data loaded successfully.")
         except Exception as e:
             print(f"Error loading map data: {e}")
+            self.report_loaded.emit("Error loading map data. (see console for details)")
 
-    def create_and_place_hex(self, x, y, terrain, hex_map):
+    def create_and_place_hex(self, x, y, terrain, regions_data):
         hex_tile = HexTile(x, y, terrain, [])
         self.scene.addItem(hex_tile)
         print(f"Neighbor HexTile created at ({x}, {y}) with terrain: {terrain}")
@@ -99,13 +114,18 @@ class HexMapView(QGraphicsView):
             self.last_mouse_pos = event.pos()
             event.accept()
         elif event.button() == Qt.LeftButton:
-            # Handle other left-click events (for example, hex selection)
+            # Handle left-click events (hex selection)
             scene_pos = self.mapToScene(event.pos())
             items = self.scene.items(scene_pos)
             for item in items:
                 if isinstance(item, HexTile):
                     self.highlight_hex_tile(item)
                     self.update_data_table(item)
+                    # Emit the full region data when a hex is selected
+                    region = self.hex_map_tile_to_region.get(item)
+                    if region:
+                        print(f"Debug: Emitting hex_selected with data: {region}")  # Debug statement
+                        self.hex_selected.emit(region)
                     break
             super().mousePressEvent(event)
 
@@ -254,4 +274,4 @@ class HexMapView(QGraphicsView):
             for col in range(self.data_table.columnCount()):
                 item = self.data_table.item(row, col)
                 if item:
-                    item.setTextAlignment(Qt.AlignLeft)
+                    item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)  # Align left and vertically center
