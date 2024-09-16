@@ -13,5 +13,5 @@ PyLantir is an open-source client for the Atlantis Play-By-Email (PBEM) game, wr
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/yourusername/PyLantir.git
+   git clone https://github.com/OldJobobo/PyLantir.git
    cd PyLantir
