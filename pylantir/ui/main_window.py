@@ -1,6 +1,6 @@
 import json
-from PySide6.QtWidgets import QMainWindow, QFileDialog, QMessageBox, QLineEdit, QTextEdit, QWidget, QHBoxLayout, QVBoxLayout, QTableWidget, QTableWidgetItem, QSplitter
-from PySide6.QtGui import QAction, QIcon, Qt
+from PySide6.QtWidgets import QMainWindow, QFileDialog, QMessageBox, QLineEdit, QTextEdit, QWidget, QVBoxLayout, QTableWidget, QSplitter
+from PySide6.QtGui import QAction, Qt
 
 from ..views.hex_map import HexMapView  # We will create this later
 from ..data.data_manager import DataManager
@@ -33,7 +33,6 @@ class MainWindow(QMainWindow):
         # View Menu
         view_menu = menubar.addMenu('&View')
 
-
         # Help Menu
         help_menu = menubar.addMenu('&Help')
         about_action = QAction('&About', self)
@@ -48,31 +47,33 @@ class MainWindow(QMainWindow):
         self.data_table = QTableWidget()
         self.data_table.setRowCount(5)  # Set initial row count
         self.data_table.setColumnCount(8)  # Set initial column count
-        self.data_table.setHorizontalHeaderLabels(['Faction', 'Faction Nr', 'Unit Nr', 'Unit Name','Men', 'Silver', 'Horses', 'Skills' ])
+        self.data_table.setHorizontalHeaderLabels(['Faction', 'Faction Nr', 'Unit Nr', 'Unit Name', 'Men', 'Silver', 'Horses', 'Skills'])
+        self.data_table.setSortingEnabled(True)
 
         self.hex_map_view = HexMapView(self.data_table)
         self.text_display = QTextEdit()
         self.text_display.setReadOnly(True)  # Make the text display read-only
 
-        # Create a layout for the map and text display
-        top_layout = QHBoxLayout()
-        top_layout.addWidget(self.hex_map_view)
-        top_layout.addWidget(self.text_display)
+        # Create a vertical splitter for HexMapView (top) and DataTable (bottom)
+        left_splitter = QSplitter()
+        left_splitter.setOrientation(Qt.Vertical)
+        left_splitter.addWidget(self.hex_map_view)
+        left_splitter.addWidget(self.data_table)
 
-        # Create a QSplitter for the top layout and data table
-        splitter = QSplitter()
-        splitter.setOrientation(Qt.Vertical)
+        # Set initial sizes for the left_splitter (15% for hex map and 25% for data table)
+        left_splitter.setSizes([int(self.height() * 0.75), int(self.height() * 0.25)])
 
-        # Create a widget to hold the top layout
-        top_widget = QWidget()
-        top_widget.setLayout(top_layout)
+        # Create a horizontal splitter to place the left_splitter and text display
+        main_splitter = QSplitter()
+        main_splitter.setOrientation(Qt.Horizontal)
+        main_splitter.addWidget(left_splitter)  # Left side: hex map and data table
+        main_splitter.addWidget(self.text_display)  # Right side: text display
 
-        # Add the top widget and data table to the splitter
-        splitter.addWidget(top_widget)
-        splitter.addWidget(self.data_table)
+        # Set the sizes to give the left part (hex map + data table) more space than the text display
+        main_splitter.setSizes([int(self.width() * 0.75), int(self.width() * 0.25)])  # Set proportions (800px to left, 400px to right)
 
-        # Add the splitter to the main layout
-        main_layout.addWidget(splitter)
+        # Add the main splitter to the central layout
+        main_layout.addWidget(main_splitter)
 
         # Set central widget
         self.setCentralWidget(central_widget)

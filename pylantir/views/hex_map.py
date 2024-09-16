@@ -2,7 +2,7 @@
 
 from PySide6.QtWidgets import QGraphicsView, QGraphicsScene, QTableWidget, QTableWidgetItem
 from PySide6.QtGui import QPainter, QPen
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QPointF
 from collections import defaultdict
 from .hex_tile import HexTile
 
@@ -11,16 +11,17 @@ class HexMapView(QGraphicsView):
         super().__init__()
         self.scene = QGraphicsScene(self)
         self.setScene(self.scene)
+        self.data_table = data_table
+        self.dragging = False  # Track if we are dragging for panning
+        self.last_mouse_pos = QPointF()  # Last mouse position during dragging
+        self.selected_hex_tile = None  # Initialize selected_hex_tile
         self.init_ui()
-        self.selected_hex_tile = None  # Initialize the selected_hex_tile attribute
-        self.data_table = data_table  # Reference to the data table
         print(f"HexMapView initialized with data_table: {self.data_table}")
 
     def init_ui(self):
-        # Enable antialiasing for smoother graphics
+         # Enable antialiasing for smoother graphics
         self.setRenderHint(QPainter.Antialiasing)
-        # Enable dragging and zooming
-        self.setDragMode(QGraphicsView.ScrollHandDrag)
+        # Enable zooming functionality
         self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
 
     def load_map_data(self, regions_data):
@@ -91,6 +92,42 @@ class HexMapView(QGraphicsView):
         else:
             return y % 2 == 1
 
+    def mousePressEvent(self, event):
+        if event.button() == Qt.RightButton:
+            # Start panning on right-click
+            self.dragging = True
+            self.last_mouse_pos = event.pos()
+            event.accept()
+        elif event.button() == Qt.LeftButton:
+            # Handle other left-click events (for example, hex selection)
+            scene_pos = self.mapToScene(event.pos())
+            items = self.scene.items(scene_pos)
+            for item in items:
+                if isinstance(item, HexTile):
+                    self.highlight_hex_tile(item)
+                    self.update_data_table(item)
+                    break
+            super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        if self.dragging:
+            # Right-click dragging for panning
+            delta = event.pos() - self.last_mouse_pos
+            self.last_mouse_pos = event.pos()
+            self.horizontalScrollBar().setValue(self.horizontalScrollBar().value() - delta.x())
+            self.verticalScrollBar().setValue(self.verticalScrollBar().value() - delta.y())
+            event.accept()
+        else:
+            super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.RightButton and self.dragging:
+            # End panning on right-click release
+            self.dragging = False
+            event.accept()
+        else:
+            super().mouseReleaseEvent(event)
+
     def wheelEvent(self, event):
         zoom_in_factor = 1.15
         zoom_out_factor = 1 / zoom_in_factor
@@ -101,21 +138,6 @@ class HexMapView(QGraphicsView):
             zoom_factor = zoom_out_factor
 
         self.scale(zoom_factor, zoom_factor)
-
-    def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
-            # Convert the mouse position to scene coordinates
-            scene_pos = self.mapToScene(event.pos())
-            items = self.scene.items(scene_pos)
-            print(f"Mouse clicked at scene position: {scene_pos}")
-            print(f"Items at clicked position: {items}")
-            for item in items:
-                if isinstance(item, HexTile):
-                    print(f"HexTile selected at ({item.x_coord}, {item.y_coord}) with units: {item.units}")
-                    self.highlight_hex_tile(item)
-                    self.update_data_table(item)
-                    break  # Only select the topmost hex tile
-        super().mousePressEvent(event)
 
     def highlight_hex_tile(self, hex_tile):
         if self.selected_hex_tile:
