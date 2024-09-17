@@ -15,6 +15,10 @@ class HexTile(QGraphicsItem):
         self.highlighted = False  # Track whether the hex tile is highlighted
         self.setPos(self.calculate_position())
 
+        # Initialize markers as None
+        self.unit_marker = None
+        self.settlement_marker = None
+
     def calculate_position(self):
         size = self.size
         width = size * 3 / 2  # Horizontal distance between hex centers
@@ -92,6 +96,18 @@ class HexTile(QGraphicsItem):
     
     def set_show_coords(self, show):
         """Toggle the display of hex coordinates."""
-        self.show_coords = False
+        self.hex_map_view.show_coords = False
         print(f"Setting show_coords to {show} for hex ({self.x_coord}, {self.y_coord})")  # Debugging
         self.update()  # Trigger a repaint to update the coordinate label visibility
+
+    def set_terrain(self, terrain_type):
+        """Update the terrain type and repaint."""
+        if self.terrain_type != terrain_type:
+            self.terrain_type = terrain_type
+            self.update()
+
+    def set_units(self, units):
+        """Update the units and repaint."""
+        if self.units != units:
+            self.units = units
+            self.update()

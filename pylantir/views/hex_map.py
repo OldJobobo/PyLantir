@@ -21,6 +21,9 @@ class HexMapView(QGraphicsView):
         self.last_mouse_pos = QPointF()  # Last mouse position during dragging
         self.selected_hex_tile = None  # Initialize selected_hex_tile
         self.hex_map_tile_to_region = {}  # Mapping from HexTile to region data
+        self.coordinates_to_hex_tile = {}  # New: mapping from (x, y) to HexTile
+        self.hex_to_unit_marker = {}  # New: mapping from HexTile to unit marker
+        self.hex_to_settlement_marker = {}  # New: mapping from HexTile to settlement marker
         self.show_coords = True  # Boolean flag to track if hex coordinates are shown
         self.init_ui()
         print(f"HexMapView initialized with data_table: {self.data_table}")
@@ -110,21 +113,21 @@ class HexMapView(QGraphicsView):
     def load_map_data(self, regions_data):
         try:
             print("Loading map data...")
-            self.scene.clear()
+            # Remove scene clearing to preserve existing hexes
+            # self.scene.clear()
             print(f"Total regions to load: {len(regions_data)}")
-            # hex_map = {}  # Dictionary to store hex tiles by coordinates
 
-            # Retrieve the faction info (for example, The Carnival of Shadows)
+            # Retrieve faction info
             faction_info = self.data_manager.get_faction_info()
             faction_number = faction_info.get("number")
 
-            # Group regions by x_coord for placement
+            # Group regions by x_coord
             columns = defaultdict(list)
             for region in regions_data:
                 x = region['coordinates']['x']
                 columns[x].append(region)
 
-            # Process regions and assign y_index for each column
+            # Process regions
             for x in sorted(columns.keys()):
                 sorted_regions = sorted(columns[x], key=lambda r: r['coordinates']['y'])
                 print(f"Column {x} sorted y-coordinates: {[r['coordinates']['y'] for r in sorted_regions]}")
@@ -134,54 +137,106 @@ class HexMapView(QGraphicsView):
                     terrain = region['terrain']
                     units = region.get('units', [])
 
-                    # Skip invalid coordinates
+                    # Validate coordinates
                     if not self.is_valid_hex_coordinate(x, y):
                         continue
 
-                    # Place the hex tile
-                    hex_tile = HexTile(x, y, terrain, self, units)
-                    self.scene.addItem(hex_tile)
-                    self.hex_map_tile_to_region[hex_tile] = region  # Map HexTile to region
+                    coord_key = (x, y)
 
-                    # Check if any unit belongs to the target faction
-                    has_faction_units = any(
-                        unit.get('faction', {}).get('number') == faction_number
-                        for unit in units
-                    )
+                    if coord_key in self.coordinates_to_hex_tile:
+                        # Update existing HexTile
+                        hex_tile = self.coordinates_to_hex_tile[coord_key]
+                        hex_tile.set_terrain(terrain)
+                        hex_tile.set_units(units)
+                        
+                        # Handle settlement markers
+                        settlement = region.get('settlement')
+                        if settlement:
+                            if hex_tile.settlement_marker is None:
+                                ring_with_dot = self.create_ring_with_dot_marker(
+                                    ring_color='white', 
+                                    dot_color='white', 
+                                    outer_diameter=12, 
+                                    ring_thickness=2, 
+                                    dot_diameter=4
+                                )
+                                ring_with_dot.setParentItem(hex_tile)  # Set HexTile as parent
+                                ring_with_dot.setPos(0, -12)  # Position relative to HexTile
+                                hex_tile.settlement_marker = ring_with_dot
+                        else:
+                            if hex_tile.settlement_marker:
+                                hex_tile.settlement_marker.setParentItem(None)  # Remove from HexTile
+                                self.scene.removeItem(hex_tile.settlement_marker)
+                                hex_tile.settlement_marker = None
 
-                    if has_faction_units:
-                        # Create and position the triangle marker for units
-                        triangle = self.create_triangle_marker(color='white', size=8)
-                        triangle.setPos(hex_tile.pos().x(), hex_tile.pos().y() + 15)
-                        self.scene.addItem(triangle)
+                        # Handle unit markers
+                        has_faction_units = any(
+                            unit.get('faction', {}).get('number') == faction_number
+                            for unit in units
+                        )
 
-                    # Check if the region has a settlement
-                    settlement = region.get('settlement')
-                    if settlement:
-                        # Create and position the circle with dot marker for settlements
-                        ring_with_dot = self.create_ring_with_dot_marker(ring_color='white', dot_color='white', outer_diameter=12, ring_thickness=2, dot_diameter=4)
-                        ring_with_dot.setPos(hex_tile.pos().x(), hex_tile.pos().y() - 12)  # Position it on the hex
-                        self.scene.addItem(ring_with_dot)
+                        if has_faction_units:
+                            if hex_tile.unit_marker is None:
+                                triangle = self.create_triangle_marker(color='white', size=8)
+                                triangle.setParentItem(hex_tile)  # Set HexTile as parent
+                                triangle.setPos(0, 15)  # Position relative to HexTile
+                                hex_tile.unit_marker = triangle
+                        else:
+                            if hex_tile.unit_marker:
+                                hex_tile.unit_marker.setParentItem(None)  # Remove from HexTile
+                                self.scene.removeItem(hex_tile.unit_marker)
+                                hex_tile.unit_marker = None
 
-                    # Process exits and ensure neighbors are placed
-                    for exit in region.get('exits', []):
-                        neighbor_coords = exit['region']['coordinates']
-                        nx = neighbor_coords['x']
-                        ny = neighbor_coords['y']
+                    else:
+                        # Create new HexTile
+                        hex_tile = HexTile(x, y, terrain, hex_map_view=self, units=units)
+                        self.scene.addItem(hex_tile)
+                        self.hex_map_tile_to_region[hex_tile] = region
+                        self.coordinates_to_hex_tile[coord_key] = hex_tile
 
-                        # Check if the neighbor is already placed
-                        if not self.is_valid_hex_coordinate(nx, ny):
-                            continue
-                        if any(
-                            neighbor_hex.x_coord == nx and neighbor_hex.y_coord == ny
-                            for neighbor_hex in self.hex_map_tile_to_region
-                        ):
-                            continue
+                        # Handle unit markers
+                        has_faction_units = any(
+                            unit.get('faction', {}).get('number') == faction_number
+                            for unit in units
+                        )
 
-                        neighbor_terrain = exit['region'].get('terrain', 'unknown')
-                        # Place neighboring hex
-                        neighbor_hex_tile = self.create_and_place_hex(nx, ny, neighbor_terrain, regions_data)
-                        self.hex_map_tile_to_region[neighbor_hex_tile] = exit['region']  # Map neighbor hex
+                        if has_faction_units:
+                            triangle = self.create_triangle_marker(color='white', size=8)
+                            triangle.setParentItem(hex_tile)  # Set HexTile as parent
+                            triangle.setPos(0, 15)  # Position relative to HexTile
+                            hex_tile.unit_marker = triangle
+
+                        # Handle settlement markers
+                        settlement = region.get('settlement')
+                        if settlement:
+                            ring_with_dot = self.create_ring_with_dot_marker(
+                                ring_color='white', 
+                                dot_color='white', 
+                                outer_diameter=12, 
+                                ring_thickness=2, 
+                                dot_diameter=4
+                            )
+                            ring_with_dot.setParentItem(hex_tile)  # Set HexTile as parent
+                            ring_with_dot.setPos(0, -12)  # Position relative to HexTile
+                            hex_tile.settlement_marker = ring_with_dot
+
+                        # Process exits and ensure neighbors are placed
+                        for exit in region.get('exits', []):
+                            neighbor_coords = exit['region']['coordinates']
+                            nx = neighbor_coords['x']
+                            ny = neighbor_coords['y']
+
+                            neighbor_coord_key = (nx, ny)
+                            if not self.is_valid_hex_coordinate(nx, ny):
+                                continue
+                            if neighbor_coord_key in self.coordinates_to_hex_tile:
+                                continue
+
+                            neighbor_terrain = exit['region'].get('terrain', 'unknown')
+                            # Place neighboring hex
+                            neighbor_hex_tile = self.create_and_place_hex(nx, ny, neighbor_terrain, regions_data)
+                            self.hex_map_tile_to_region[neighbor_hex_tile] = exit['region']
+                            self.coordinates_to_hex_tile[neighbor_coord_key] = neighbor_hex_tile
 
             # Adjust the scene
             self.setSceneRect(self.scene.itemsBoundingRect())
@@ -193,6 +248,8 @@ class HexMapView(QGraphicsView):
         except Exception as e:
             print(f"Error loading map data: {e}")
             self.report_loaded.emit("Error loading map data. (see console for details)")
+
+
 
     def create_and_place_hex(self, x, y, terrain, regions_data):
         hex_tile = HexTile(x, y, terrain, self, [])
@@ -285,9 +342,8 @@ class HexMapView(QGraphicsView):
             "Faction Number",
             "Avoid",
             "Guard",
-            "Units",
-            "Role",
-            "Number"
+            "Contains",
+            "Unit Name"
         ]
 
         # Set table headers
@@ -316,11 +372,8 @@ class HexMapView(QGraphicsView):
             units_details = unit.get('units') or unit.get('items') or []
 
             # Role
-            role = unit.get('name', '')
-
-            # Number
-            number = str(unit.get('number', ''))
-
+            role = str(unit.get('name', '')) + ' (' + str(unit.get('number', '')) + ')'
+     
             # Faction Display
             faction_display = f"{faction_info} (#{faction_number})" if faction_number else faction_info
 
@@ -344,9 +397,6 @@ class HexMapView(QGraphicsView):
             # Role Display
             role_display = role
 
-            # Number Display
-            number_display = number
-
             # Compile Table Data
             table_data = [
                 status,
@@ -355,8 +405,7 @@ class HexMapView(QGraphicsView):
                 avoid_display,
                 guard_display,
                 units_display,
-                role_display,
-                number_display
+                role_display
             ]
 
             for col, data in enumerate(table_data):

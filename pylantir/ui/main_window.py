@@ -35,7 +35,7 @@ class MainWindow(QMainWindow):
         view_menu = menubar.addMenu('&View')
 
         # Toggle Hex Coordinates Action
-        toggle_coords_action = QAction('Draw coords on hex', self)
+        toggle_coords_action = QAction('Draw Coords on Hex', self)
         toggle_coords_action.setCheckable(True)  # Make it checkable so you can see the state
         toggle_coords_action.setChecked(True)    # Set it checked by default
         toggle_coords_action.triggered.connect(self.toggle_hex_coords)  # Connect to the method
@@ -119,19 +119,31 @@ class MainWindow(QMainWindow):
 
         # Display basic hex information
         coordinates = hex_data.get('coordinates', {})
-        
+                
         # Access 'x' and 'y' using dictionary keys
         x = coordinates.get('x', 'Unknown')
         y = coordinates.get('y', 'Unknown')
         
         print(f"Debug: Hex Coordinates: {x}, {y}")  # Debug output
         self.text_display.append(f"Hex Coordinates: {x}, {y}")  # Corrected access
-        
+        self.statusBar().showMessage(str(f"Hex: {x}, {y}"))  # Show coordinates in status bar
+       
         # Display terrain type
         terrain = hex_data.get('terrain', 'Unknown')
         print(f"Debug: Terrain: {terrain}")  # Debug output
         self.text_display.append(f"Terrain: {terrain}")
         
+        # Display settlement information
+        settlement = hex_data.get('settlement')
+        if settlement:
+            settlement_name = settlement.get('name', 'Unknown')
+            settlement_size = settlement.get('size', 'Unknown')
+            print(f"Debug: Settlement: {settlement}")  # Debug output
+            self.text_display.append(f"Settlement: {settlement_name} (Size: {settlement_size})")
+        else:
+            print("Debug: No settlement found")  # Debug output
+            self.text_display.append("Settlement: None")
+
         # Display population information
         population = hex_data.get('population', {})
         population_amount = population.get('amount', 'N/A')
@@ -147,6 +159,16 @@ class MainWindow(QMainWindow):
         else:
             self.text_display.append("Tax: Not available")
         
+         # Display wages information
+        wages = hex_data.get('wages', {})
+        wages_amount = wages.get('amount', 'N/A')
+        wages_max = wages.get('max', 'N/A')
+        print(f"Debug: Wages: {wages}")  # Debug output
+        if wages_amount != 'N/A' and wages_max != 'N/A':
+            self.text_display.append(f"Wages: {wages_amount} (Max: {wages_max})")
+        else:
+            self.text_display.append("Wages: Not available")
+
         # Display market information (for_sale and wanted)
         markets = hex_data.get('markets', {})
         print(f"Debug: Markets: {markets}")  # Debug output
@@ -177,26 +199,9 @@ class MainWindow(QMainWindow):
             print("Debug: No wanted items")  # Debug output
             self.text_display.append("Wanted: None")
         
-        # Display wages information
-        wages = hex_data.get('wages', {})
-        wages_amount = wages.get('amount', 'N/A')
-        wages_max = wages.get('max', 'N/A')
-        print(f"Debug: Wages: {wages}")  # Debug output
-        if wages_amount != 'N/A' and wages_max != 'N/A':
-            self.text_display.append(f"Wages: {wages_amount} (Max: {wages_max})")
-        else:
-            self.text_display.append("Wages: Not available")
+       
         
-        # Display settlement information
-        settlement = hex_data.get('settlement')
-        if settlement:
-            settlement_name = settlement.get('name', 'Unknown')
-            settlement_size = settlement.get('size', 'Unknown')
-            print(f"Debug: Settlement: {settlement}")  # Debug output
-            self.text_display.append(f"Settlement: {settlement_name} (Size: {settlement_size})")
-        else:
-            print("Debug: No settlement found")  # Debug output
-            self.text_display.append("Settlement: None")
+        
         
         # Check if there are exits
         exits = hex_data.get('exits', [])
@@ -248,7 +253,7 @@ class MainWindow(QMainWindow):
             # Display parsed JSON data
             self.display_parsed_data()
 
-            QMessageBox.information(self, 'File Loaded', f'Loaded report: {filename}')
+            # QMessageBox.information(self, 'File Loaded', f'Loaded report: {filename}')
         else:
             self.statusBar().showMessage("No file selected")
             QMessageBox.warning(self, 'No File', 'No file was selected.')
