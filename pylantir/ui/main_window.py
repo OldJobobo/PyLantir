@@ -8,6 +8,7 @@ from pylantir.data.data_manager import DataManager
 
 class MainWindow(QMainWindow):
     def __init__(self):
+        """Initialize the main window and its components."""
         super().__init__()
         self.data_manager = DataManager()
         self.data_manager.load_persistent_data('persistent_map_data.json')
@@ -16,6 +17,7 @@ class MainWindow(QMainWindow):
         self.init_ui()
 
     def init_ui(self):
+        """Initialize the user interface components."""
         # Create Menu Bar
         menubar = self.menuBar()
         file_menu = menubar.addMenu('&File')
@@ -109,6 +111,7 @@ class MainWindow(QMainWindow):
         self.hex_map_view.toggle_hex_labels()
 
     def update_status_bar(self, message):
+        """Update the status bar with a message."""
         self.statusBar().showMessage(message)
     
     def display_hex_data(self, hex_data):
@@ -226,6 +229,7 @@ class MainWindow(QMainWindow):
 
     
     def open_turn_report(self):
+        """Open a turn report file and load its data into the application."""
         options = QFileDialog.Options()
         
         # Get the root directory by going up two levels from the current file location
@@ -252,11 +256,13 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, 'No File', 'No file was selected.')
 
     def update_views(self):
+        """Update the hex map view with the latest region data."""
         regions = self.data_manager.get_regions()
         self.hex_map_view.load_map_data(regions)
         self.display_parsed_data()
 
     def display_parsed_data(self):
+        """Display faction, date, and engine information in the text_display widget."""
         # Display faction information
         faction_info = self.data_manager.get_faction_info()
         self.text_display.append(f"Faction: {faction_info['name']} [{faction_info['number']}]")
@@ -280,6 +286,7 @@ class MainWindow(QMainWindow):
         self.text_display.append(f"Times Sent: {admin_settings['times_sent']}")
 
     def show_about(self):
+        """Show the about dialog."""
         QMessageBox.about(
             self,
             'About PyLantir',
@@ -287,5 +294,6 @@ class MainWindow(QMainWindow):
         )
 
     def closeEvent(self, event):
+        """Save persistent data when the application is closed."""
         self.data_manager.save_persistent_data('persistent_map_data.json')
         super().closeEvent(event)
