@@ -11,7 +11,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.data_manager = DataManager()
         self.setWindowTitle('PyLantir - Atlantis PBEM Client')
-        self.resize(1200, 800)
+        # self.resize(1200, 800)
         self.init_ui()
 
     def init_ui(self):
