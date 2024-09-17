@@ -1,8 +1,8 @@
 # hex_map.py
 
-from PySide6.QtWidgets import QGraphicsView, QGraphicsScene, QTableWidget, QTableWidgetItem
-from PySide6.QtGui import QPainter, QPen
-from PySide6.QtCore import Qt, QPointF, Signal, QObject
+from PySide6.QtWidgets import QGraphicsView, QGraphicsScene, QTableWidget, QTableWidgetItem, QHeaderView, QGraphicsPolygonItem, QGraphicsEllipseItem, QGraphicsItemGroup
+from PySide6.QtGui import QPainter, QPen, QBrush, QColor, QPolygonF
+from PySide6.QtCore import Qt, QPointF, Signal, QObject, QRectF
 from collections import defaultdict
 from pylantir.views.hex_tile import HexTile
 
@@ -11,15 +11,17 @@ class HexMapView(QGraphicsView):
     report_loaded = Signal(str)
     hex_selected = Signal(dict)  # Emits the full region data
 
-    def __init__(self, data_table):
+    def __init__(self, data_manager, data_table):
         super().__init__()
         self.scene = QGraphicsScene(self)
         self.setScene(self.scene)
+        self.data_manager = data_manager  # DataManager instance passed in constructor
         self.data_table = data_table
         self.dragging = False  # Track if we are dragging for panning
         self.last_mouse_pos = QPointF()  # Last mouse position during dragging
         self.selected_hex_tile = None  # Initialize selected_hex_tile
         self.hex_map_tile_to_region = {}  # Mapping from HexTile to region data
+        self.show_coords = True  # Boolean flag to track if hex coordinates are shown
         self.init_ui()
         print(f"HexMapView initialized with data_table: {self.data_table}")
 
@@ -29,12 +31,92 @@ class HexMapView(QGraphicsView):
         # Enable zooming functionality
         self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
 
+    def toggle_hex_labels(self):
+        """Toggle the visibility of hex coordinate labels."""
+        self.show_coords = not self.show_coords  # Flip the flag
+        print(f"Toggling hex labels. New state: {self.show_coords}")  # Debugging
+        for item in self.scene.items():
+            if isinstance(item, HexTile):
+                item.set_show_coords(self.show_coords)  # Update the visibility of labels
+                print(f"Toggled hex at ({item.x_coord}, {item.y_coord})")  # Debugging
+
+
+    def create_triangle_marker(self, color='white', size=10):
+        """
+        Create a small triangle marker.
+        
+        Args:
+            color (str): Color of the triangle.
+            size (int): Size of the triangle.
+        
+        Returns:
+            QGraphicsPolygonItem: The triangle marker.
+        """
+        # Define the points for the triangle
+        points = [
+            QPointF(0, -size / 2),            # Top point
+            QPointF(size / 2, size / 2),     # Bottom right point
+            QPointF(-size / 2, size / 2)     # Bottom left point
+        ]
+        triangle = QGraphicsPolygonItem(QPolygonF(points))
+        triangle.setBrush(QBrush(QColor(color)))
+        triangle.setPen(QPen(Qt.NoPen))  # No border
+        
+        # Set the triangle's origin to the center
+        triangle.setTransformOriginPoint(0, 0)
+        
+         # Set the Z-value for the triangle to control the stacking order
+        triangle.setZValue(2)
+
+        return triangle
+
+
+    def create_ring_with_dot_marker(self, ring_color='white', dot_color='white', outer_diameter=10, ring_thickness=2, dot_diameter=2):
+        """
+        Create a ring with a small dot in the center, leaving a transparent space between the ring and the dot.
+        
+        Args:
+            ring_color (str): Color of the outer ring.
+            dot_color (str): Color of the dot in the center.
+            outer_diameter (int): Diameter of the outer ring.
+            ring_thickness (int): Thickness of the ring.
+            dot_diameter (int): Diameter of the center dot.
+        
+        Returns:
+            QGraphicsItemGroup: The ring with a dot marker.
+        """
+        # Create the outer ring (with transparent center)
+        outer_ring = QGraphicsEllipseItem(-outer_diameter / 2, -outer_diameter / 2, outer_diameter, outer_diameter)
+        outer_ring.setBrush(Qt.NoBrush)  # No fill to create the transparent center
+        outer_ring.setPen(QPen(QColor(ring_color), ring_thickness))  # Ring outline with specified thickness
+        
+        # Create the center dot
+        center_dot = QGraphicsEllipseItem(-dot_diameter / 2, -dot_diameter / 2, dot_diameter, dot_diameter)
+        center_dot.setBrush(QBrush(QColor(dot_color)))  # Set the color of the center dot
+        center_dot.setPen(QPen(Qt.NoPen))  # No border
+        
+        # Create a group item to combine the ring and dot
+        group = QGraphicsItemGroup()
+        group.addToGroup(outer_ring)   # Add the outer ring
+        group.addToGroup(center_dot)   # Add the center dot
+
+        # Set the Z-value to ensure it's drawn above the hex
+        group.setZValue(2)
+
+        return group
+
+
+
     def load_map_data(self, regions_data):
         try:
             print("Loading map data...")
             self.scene.clear()
             print(f"Total regions to load: {len(regions_data)}")
-            hex_map = {}  # Dictionary to store hex tiles by coordinates
+            # hex_map = {}  # Dictionary to store hex tiles by coordinates
+
+            # Retrieve the faction info (for example, The Carnival of Shadows)
+            faction_info = self.data_manager.get_faction_info()
+            faction_number = faction_info.get("number")
 
             # Group regions by x_coord for placement
             columns = defaultdict(list)
@@ -57,9 +139,29 @@ class HexMapView(QGraphicsView):
                         continue
 
                     # Place the hex tile
-                    hex_tile = HexTile(x, y, terrain, units)
+                    hex_tile = HexTile(x, y, terrain, self, units)
                     self.scene.addItem(hex_tile)
                     self.hex_map_tile_to_region[hex_tile] = region  # Map HexTile to region
+
+                    # Check if any unit belongs to the target faction
+                    has_faction_units = any(
+                        unit.get('faction', {}).get('number') == faction_number
+                        for unit in units
+                    )
+
+                    if has_faction_units:
+                        # Create and position the triangle marker for units
+                        triangle = self.create_triangle_marker(color='white', size=8)
+                        triangle.setPos(hex_tile.pos().x(), hex_tile.pos().y() + 15)
+                        self.scene.addItem(triangle)
+
+                    # Check if the region has a settlement
+                    settlement = region.get('settlement')
+                    if settlement:
+                        # Create and position the circle with dot marker for settlements
+                        ring_with_dot = self.create_ring_with_dot_marker(ring_color='white', dot_color='white', outer_diameter=12, ring_thickness=2, dot_diameter=4)
+                        ring_with_dot.setPos(hex_tile.pos().x(), hex_tile.pos().y() - 12)  # Position it on the hex
+                        self.scene.addItem(ring_with_dot)
 
                     # Process exits and ensure neighbors are placed
                     for exit in region.get('exits', []):
@@ -93,7 +195,7 @@ class HexMapView(QGraphicsView):
             self.report_loaded.emit("Error loading map data. (see console for details)")
 
     def create_and_place_hex(self, x, y, terrain, regions_data):
-        hex_tile = HexTile(x, y, terrain, [])
+        hex_tile = HexTile(x, y, terrain, self, [])
         self.scene.addItem(hex_tile)
         print(f"Neighbor HexTile created at ({x}, {y}) with terrain: {terrain}")
         return hex_tile

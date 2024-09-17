@@ -33,6 +33,13 @@ class MainWindow(QMainWindow):
         # View Menu
         view_menu = menubar.addMenu('&View')
 
+        # Toggle Hex Coordinates Action
+        toggle_coords_action = QAction('Draw coords on hex', self)
+        toggle_coords_action.setCheckable(True)  # Make it checkable so you can see the state
+        toggle_coords_action.setChecked(True)    # Set it checked by default
+        toggle_coords_action.triggered.connect(self.toggle_hex_coords)  # Connect to the method
+        view_menu.addAction(toggle_coords_action)
+
         # Help Menu
         help_menu = menubar.addMenu('&Help')
         about_action = QAction('&About', self)
@@ -60,7 +67,7 @@ class MainWindow(QMainWindow):
             }
         """)
 
-        self.hex_map_view = HexMapView(self.data_table)
+        self.hex_map_view = HexMapView(self.data_manager, self.data_table)
         self.hex_map_view.report_loaded.connect(self.update_status_bar)
         self.hex_map_view.hex_selected.connect(self.display_hex_data)
 
@@ -95,11 +102,15 @@ class MainWindow(QMainWindow):
         # Create and add the status bar
         self.statusBar().showMessage("Ready")  # Show a default message when the app starts
 
+    def toggle_hex_coords(self):
+        """Toggle the hex coordinates labels on and off."""
+        self.hex_map_view.toggle_hex_labels()
+
     def update_status_bar(self, message):
         self.statusBar().showMessage(message)
     
     def display_hex_data(self, hex_data):
-        """Display hex-specific data (excluding unit data) in the text_display widget with debug output."""
+        """Display hex-specific data (including settlement data) in the text_display widget with debug output."""
         self.text_display.clear()  # Clear previous content
         
         # Print the entire hex data for debugging
@@ -134,7 +145,7 @@ class MainWindow(QMainWindow):
             self.text_display.append(f"Tax: {tax}")
         else:
             self.text_display.append("Tax: Not available")
-
+        
         # Display market information (for_sale and wanted)
         markets = hex_data.get('markets', {})
         print(f"Debug: Markets: {markets}")  # Debug output
@@ -175,6 +186,17 @@ class MainWindow(QMainWindow):
         else:
             self.text_display.append("Wages: Not available")
         
+        # Display settlement information
+        settlement = hex_data.get('settlement')
+        if settlement:
+            settlement_name = settlement.get('name', 'Unknown')
+            settlement_size = settlement.get('size', 'Unknown')
+            print(f"Debug: Settlement: {settlement}")  # Debug output
+            self.text_display.append(f"Settlement: {settlement_name} (Size: {settlement_size})")
+        else:
+            print("Debug: No settlement found")  # Debug output
+            self.text_display.append("Settlement: None")
+        
         # Check if there are exits
         exits = hex_data.get('exits', [])
         print(f"Debug: Exits: {exits}")  # Debug output
@@ -193,7 +215,6 @@ class MainWindow(QMainWindow):
         else:
             print("Debug: No exits found")  # Debug output
             self.text_display.append("Exits: None")
-
 
 
     

@@ -4,11 +4,12 @@ from PySide6.QtCore import QRectF, QPointF, Qt
 import math
 
 class HexTile(QGraphicsItem):
-    def __init__(self, x_coord, y_coord, terrain_type, units=None):
+    def __init__(self, x_coord, y_coord, terrain_type, hex_map_view, units=None):
         super().__init__()
         self.x_coord = x_coord  # Column (q)
         self.y_coord = y_coord  # Row (r)
         self.terrain_type = terrain_type
+        self.hex_map_view = hex_map_view  # Reference to the HexMapView
         self.units = units if units is not None else []  # List of units in this hex
         self.size = 30  # Adjust size as needed
         self.highlighted = False  # Track whether the hex tile is highlighted
@@ -69,14 +70,28 @@ class HexTile(QGraphicsItem):
 
         # Draw highlight border if highlighted
         if self.highlighted:
-            painter.setPen(QPen(QColor('red'), 2))
+            painter.setPen(QPen(QColor('darkred'), 2))
             painter.drawPath(path)
 
-        # Draw coordinate labels
-        painter.setPen(QPen(QColor('black')))
-        painter.setFont(QFont('Arial', 8))
-        painter.drawText(self.boundingRect(), Qt.AlignCenter, f"({self.x_coord},{self.y_coord})")
+
+        # Set text color based on terrain type
+        if self.terrain_type == 'ocean':
+            text_color = QColor('#B0B0B0')  # White text for ocean terrain
+        else:
+            text_color = QColor('black')  # Default text color
+
+        # Draw coordinate labels only if label_visible is True
+        if self.hex_map_view.show_coords:
+            painter.setPen(QPen(QColor(text_color)))
+            painter.setFont(QFont('Arial', 8))
+            painter.drawText(self.boundingRect(), Qt.AlignCenter, f"({self.x_coord},{self.y_coord})")
 
     def set_highlight(self, highlight):
         self.highlighted = highlight
         self.update()  # Trigger a repaint to show/hide the highlight
+    
+    def set_show_coords(self, show):
+        """Toggle the display of hex coordinates."""
+        self.show_coords = False
+        print(f"Setting show_coords to {show} for hex ({self.x_coord}, {self.y_coord})")  # Debugging
+        self.update()  # Trigger a repaint to update the coordinate label visibility

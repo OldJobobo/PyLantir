@@ -101,3 +101,27 @@ class DataManager:
             return None
 
         return markets
+    
+    def get_settlement(self, x, y):
+        """
+        Retrieve the settlement information for the region at coordinates (x, y).
+
+        Parameters:
+            x (int): The x-coordinate of the region.
+            y (int): The y-coordinate of the region.
+
+        Returns:
+            dict: A dictionary containing settlement details (e.g., name, size).
+                  Returns None if the region does not exist or has no settlement.
+        """
+        region = self.get_region(x, y)
+        if not region:
+            print(f"No region found at coordinates ({x}, {y}).")
+            return None
+
+        settlement = region.get('settlement')
+        if not settlement:
+            print(f"Region at ({x}, {y}) has no settlement data.")
+            return None
+
+        return settlement
