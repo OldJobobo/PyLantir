@@ -1,6 +1,7 @@
 import json
 from PySide6.QtWidgets import QMainWindow, QFileDialog, QMessageBox, QLineEdit, QTextEdit, QWidget, QVBoxLayout, QTableWidget, QSplitter
 from PySide6.QtGui import QAction, Qt
+import os
 
 from pylantir.views.hex_map import HexMapView  # We will create this later
 from pylantir.data.data_manager import DataManager
@@ -220,10 +221,19 @@ class MainWindow(QMainWindow):
     
     def open_turn_report(self):
         options = QFileDialog.Options()
+        
+        # Get the root directory by going up two levels from the current file location
+        program_directory = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+        reports_directory = os.path.join(program_directory, 'reports')  # Append 'reports' directory
+
+        # Create the directory if it doesn't exist
+        if not os.path.exists(reports_directory):
+            os.makedirs(reports_directory)
+
         filename, _ = QFileDialog.getOpenFileName(
             self,
             'Open JSON Turn Report',
-            '',
+            reports_directory,  # Set the initial directory to {programdirectory}/reports
             'JSON Files (*.json);;All Files (*)',
             options=options
         )
