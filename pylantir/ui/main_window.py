@@ -10,6 +10,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.data_manager = DataManager()
+        self.data_manager.load_persistent_data('persistent_map_data.json')
         self.setWindowTitle('PyLantir - Atlantis PBEM Client')
         # self.resize(1200, 800)
         self.init_ui()
@@ -245,18 +246,15 @@ class MainWindow(QMainWindow):
 
         if filename:
             self.data_manager.load_report(filename)
-            regions = self.data_manager.get_regions()
-            # print(f"Regions obtained: {regions}")  # Add print to check regions
-            self.hex_map_view.load_map_data(regions)
-            # Update other views as needed
-
-            # Display parsed JSON data
-            self.display_parsed_data()
-
-            # QMessageBox.information(self, 'File Loaded', f'Loaded report: {filename}')
+            self.update_views()
         else:
             self.statusBar().showMessage("No file selected")
             QMessageBox.warning(self, 'No File', 'No file was selected.')
+
+    def update_views(self):
+        regions = self.data_manager.get_regions()
+        self.hex_map_view.load_map_data(regions)
+        self.display_parsed_data()
 
     def display_parsed_data(self):
         # Display faction information
@@ -287,3 +285,7 @@ class MainWindow(QMainWindow):
             'About PyLantir',
             'PyLantir\n\nAn open-source client for the Atlantis PBEM game.\n\nDeveloped by J. Stuart Brown.'
         )
+
+    def closeEvent(self, event):
+        self.data_manager.save_persistent_data('persistent_map_data.json')
+        super().closeEvent(event)

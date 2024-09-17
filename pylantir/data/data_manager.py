@@ -1,41 +1,74 @@
 # pylantir/data/data_manager.py
 
 import json
+import os
 
 class DataManager:
     def __init__(self):
-        self.data = {}
-        self.regions = {}  # Dictionary to store regions by their coordinates
+        self.report_data = {}  # This will store the entire report
+        self.persistent_map_data = {}
+        self.regions = {}
 
     def load_report(self, filename):
+        """
+        Load a JSON report file and process its data.
+
+        This method reads a JSON file specified by the filename, stores its contents
+        in self.report_data, and then processes this data using the _process_report_data method.
+
+        Args:
+            filename (str): The path to the JSON report file to be loaded.
+
+        Raises:
+            Exception: If there's an error while reading or processing the file.
+
+        Returns:
+            None
+        """
         try:
             with open(filename, 'r') as f:
-                self.data = json.load(f)
-            
-            # Populate regions dictionary for quick access
-            for region in self.data.get('regions', []):
-                coordinates = region['coordinates']
-                x = coordinates['x']
-                y = coordinates['y']
-                self.regions[(x, y)] = region
-                
-                # Check for missing fields in the hex data and log a warning
-                missing_fields = []
-                if 'terrain' not in region:
-                    missing_fields.append('terrain')
-                if 'population' not in region:
-                    missing_fields.append('population')
-                if 'products' not in region:
-                    missing_fields.append('products')
-                if 'markets' not in region:
-                    missing_fields.append('markets')
-                if missing_fields:
-                    print(f"Region at ({x}, {y}) is missing fields: {', '.join(missing_fields)}")
-
+                self.report_data = json.load(f)
+            self._process_report_data()
             print("Report loaded successfully.")
-            print(f"Total regions: {len(self.regions)}")
         except Exception as e:
             print(f"Error loading report: {e}")
+
+    def _process_report_data(self):
+        self.regions.clear()
+        for region in self.report_data.get('regions', []):
+            coordinates = region['coordinates']
+            x, y = coordinates['x'], coordinates['y']
+            self.regions[(x, y)] = region
+            self._merge_persistent_data(x, y)
+
+    def _merge_persistent_data(self, x, y):
+        if (x, y) in self.persistent_map_data:
+            self.regions[(x, y)].update(self.persistent_map_data[(x, y)])
+
+    def save_persistent_data(self, filename):
+        try:
+            with open(filename, 'w') as f:
+                json.dump(self.persistent_map_data, f)
+            print("Persistent data saved successfully.")
+        except Exception as e:
+            print(f"Error saving persistent data: {e}")
+
+    def load_persistent_data(self, filename):
+        if os.path.exists(filename):
+            try:
+                with open(filename, 'r') as f:
+                    self.persistent_map_data = json.load(f)
+                print("Persistent data loaded successfully.")
+            except Exception as e:
+                print(f"Error loading persistent data: {e}")
+        else:
+            print("No persistent data file found. Starting with empty data.")
+
+    def update_region(self, x, y, data):
+        if (x, y) in self.regions:
+            self.regions[(x, y)].update(data)
+            self.persistent_map_data[(x, y)] = self.persistent_map_data.get((x, y), {})
+            self.persistent_map_data[(x, y)].update(data)
 
     def get_regions(self):
         return list(self.regions.values())
@@ -45,19 +78,19 @@ class DataManager:
 
     def get_faction_info(self):
         return {
-            "name": self.data.get("name", "Unknown"),
-            "number": self.data.get("number", "Unknown")
+            "name": self.report_data.get("name", "Unknown"),
+            "number": self.report_data.get("number", "Unknown")
         }
 
     def get_date_info(self):
-        date_info = self.data.get("date", {})
+        date_info = self.report_data.get("date", {})
         return {
             "month": date_info.get("month", "Unknown"),
             "year": date_info.get("year", "Unknown")
         }
 
     def get_engine_info(self):
-        engine_info = self.data.get("engine", {})
+        engine_info = self.report_data.get("engine", {})
         return {
             "ruleset": engine_info.get("ruleset", "Unknown"),
             "ruleset_version": engine_info.get("ruleset_version", "Unknown"),
@@ -65,13 +98,13 @@ class DataManager:
         }
 
     def get_attitudes(self):
-        attitudes = self.data.get("attitudes", {})
+        attitudes = self.report_data.get("attitudes", {})
         return {
             "default": attitudes.get("default", "Unknown").capitalize()
         }
 
     def get_administrative_settings(self):
-        admin = self.data.get("administrative", {})
+        admin = self.report_data.get("administrative", {})
         return {
             "password_unset": admin.get("password_unset", False),
             "show_unit_attitudes": admin.get("show_unit_attitudes", False),

@@ -21,9 +21,9 @@ class HexMapView(QGraphicsView):
         self.last_mouse_pos = QPointF()  # Last mouse position during dragging
         self.selected_hex_tile = None  # Initialize selected_hex_tile
         self.hex_map_tile_to_region = {}  # Mapping from HexTile to region data
-        self.coordinates_to_hex_tile = {}  # New: mapping from (x, y) to HexTile
-        self.hex_to_unit_marker = {}  # New: mapping from HexTile to unit marker
-        self.hex_to_settlement_marker = {}  # New: mapping from HexTile to settlement marker
+        self.coordinates_to_hex_tile = {}  # mapping from (x, y) to HexTile
+        # self.hex_to_unit_marker = {}  # mapping from HexTile to unit marker
+        self.hex_to_settlement_marker = {}  # mapping from HexTile to settlement marker
         self.show_coords = True  # Boolean flag to track if hex coordinates are shown
         self.init_ui()
         print(f"HexMapView initialized with data_table: {self.data_table}")
@@ -119,6 +119,10 @@ class HexMapView(QGraphicsView):
             faction_info = self.data_manager.get_faction_info()
             faction_number = faction_info.get("number")
 
+            # Clear all existing unit markers and data
+            self.clear_all_unit_markers()
+            self.clear_data_table()
+
             # Group regions by x_coord
             columns = defaultdict(list)
             for region in regions_data:
@@ -174,6 +178,22 @@ class HexMapView(QGraphicsView):
             print(f"Error loading map data: {e}")
             self.report_loaded.emit("Error loading map data. (see console for details)")
 
+    def clear_all_unit_markers(self):
+        for hex_tile in self.coordinates_to_hex_tile.values():
+            if hex_tile.unit_marker:
+                self.scene.removeItem(hex_tile.unit_marker)
+                hex_tile.unit_marker = None
+            hex_tile.units = []
+
+    def clear_data_table(self):
+        self.data_table.setRowCount(0)
+
+    def update_hex_data(self, x, y, data):
+        self.data_manager.update_region(x, y, data)
+        hex_tile = self.coordinates_to_hex_tile.get((x, y))
+        if hex_tile:
+            hex_tile.update_from_data(data)
+
     def process_exits(self, regions_data):
         for region in regions_data:
             x = region['coordinates']['x']
@@ -200,7 +220,7 @@ class HexMapView(QGraphicsView):
             if hex_tile.unit_marker is None:
                 triangle = self.create_triangle_marker(color='white', size=8)
                 triangle.setParentItem(hex_tile)
-                triangle.setPos(0, 15)
+                triangle.setPos(0, 20)
                 hex_tile.unit_marker = triangle
         else:
             if hex_tile.unit_marker:
@@ -219,7 +239,7 @@ class HexMapView(QGraphicsView):
                     dot_diameter=4
                 )
                 ring_with_dot.setParentItem(hex_tile)
-                ring_with_dot.setPos(0, -12)
+                ring_with_dot.setPos(0, -20)
                 hex_tile.settlement_marker = ring_with_dot
         else:
             if hex_tile.settlement_marker:

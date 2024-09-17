@@ -11,7 +11,7 @@ class HexTile(QGraphicsItem):
         self.terrain_type = terrain_type
         self.hex_map_view = hex_map_view  # Reference to the HexMapView
         self.units = units if units is not None else []  # List of units in this hex
-        self.size = 30  # Adjust size as needed
+        self.size = 40  # Adjust size as needed
         self.highlighted = False  # Track whether the hex tile is highlighted
         self.setPos(self.calculate_position())
 
@@ -55,12 +55,12 @@ class HexTile(QGraphicsItem):
 
         # Set color based on terrain
         terrain_colors = {
-            'plain': QColor('green'),
+            'plain': QColor('forestgreen'),
             'forest': QColor('darkgreen'),
             'mountain': QColor('gray'),
-            'swamp': QColor('brown'),
-            'jungle': QColor('darkolivegreen'),
-            'desert': QColor('yellow'),
+            'swamp': QColor('darkolivegreen'),
+            'jungle': QColor('olivedrab'),
+            'desert': QColor('sandybrown'),
             'tundra': QColor('lightblue'),
             'nexus': QColor('purple'),
             'ocean': QColor('blue'),
@@ -111,3 +111,11 @@ class HexTile(QGraphicsItem):
         if self.units != units:
             self.units = units
             self.update()
+
+    def update_from_data(self, data):
+        if 'terrain' in data:
+            self.set_terrain(data['terrain'])
+        if 'units' in data:
+            self.set_units(data['units'])
+        # Add more updates as needed
+        self.update()
