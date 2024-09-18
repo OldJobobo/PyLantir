@@ -84,7 +84,7 @@ If you prefer to run PyLantir from source or contribute to its development, foll
 6. **Run PyLantir:**
    Launch the application by running:
    ```bash
-   python main.py
+   python -m pylantir.main
    ```
    Note: Ensure that main.py is the correct entry point. If the entry point differs, adjust the command accordingly.
 
