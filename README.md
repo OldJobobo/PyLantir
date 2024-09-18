@@ -19,6 +19,30 @@ PyLantir is an open-source client for the Atlantis Play-By-Email (PBEM) game, wr
 
 ## Installation
 
+### Download the Latest Release (Windows)
+
+For a straightforward Windows installation, you can download the most recent release of PyLantir:
+
+1. **Visit the Latest Release Page:**
+   
+   Access the latest release of PyLantir on GitHub:
+   
+   [PyLantir Latest Release](https://github.com/OldJobobo/PyLantir/releases/latest)
+
+2. **Download the Windows Installer:**
+   
+   - Locate the assets section in the latest release.
+   - Download the appropriate installer for Windows (e.g., `PyLantir-Setup.exe`) or a ZIP archive.
+
+3. **Install PyLantir:**
+   
+   - **If you downloaded an installer:**
+     - Run the executable and follow the on-screen instructions.
+   - **If you downloaded a ZIP archive:**
+     - Extract its contents to a desired location.
+     - Run the `PyLantir.exe` file from the extracted folder.
+
+
 ### Prerequisites
 
 - Python 3.6 or higher
