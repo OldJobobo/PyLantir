@@ -38,10 +38,6 @@ For a straightforward Windows installation, you can download the most recent rel
    
    - **If you downloaded an installer:**
      - Run the executable and follow the on-screen instructions.
-   - **If you downloaded a ZIP archive:**
-     - Extract its contents to a desired location.
-     - Run the `PyLantir.exe` file from the extracted folder.
-
 
 ### Prerequisites
 
