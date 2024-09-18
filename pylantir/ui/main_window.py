@@ -27,6 +27,18 @@ class MainWindow(QMainWindow):
         open_action.setShortcut('Ctrl+O')
         open_action.triggered.connect(self.open_turn_report)
         file_menu.addAction(open_action)
+        
+        # Save Game Data Action
+        save_game_action = QAction('&Save Game Data', self)
+        save_game_action.setShortcut('Ctrl+S')
+        save_game_action.triggered.connect(self.save_game_data)
+        file_menu.addAction(save_game_action)
+
+        # Load Game Data Action
+        load_game_action = QAction('&Load Game Data', self)
+        load_game_action.setShortcut('Ctrl+L')
+        load_game_action.triggered.connect(self.load_game_data)
+        file_menu.addAction(load_game_action)
 
         # Exit Action
         exit_action = QAction('&Exit', self)
@@ -56,9 +68,6 @@ class MainWindow(QMainWindow):
 
         # Create HexMapView and QTextEdit
         self.data_table = QTableWidget()
-        # self.data_table.setRowCount(5)  # Set initial row count
-        # self.data_table.setColumnCount(8)  # Set initial column count
-        # self.data_table.setHorizontalHeaderLabels(['Status', 'Faction Name', 'Faction Number', 'Avoid', 'Guard', 'Units', 'Role', 'Number'])  # Set initial column headers
         self.data_table.setSortingEnabled(True)
 
         # Set the grid line color to white
@@ -73,6 +82,7 @@ class MainWindow(QMainWindow):
         """)
 
         self.hex_map_view = HexMapView(self.data_manager, self.data_table)
+
         self.hex_map_view.setStyleSheet("background-color: #1F1F1F; border: 1px solid grey;")
         self.hex_map_view.report_loaded.connect(self.update_status_bar)
         self.hex_map_view.hex_selected.connect(self.display_hex_data)
@@ -108,6 +118,36 @@ class MainWindow(QMainWindow):
 
         # Create and add the status bar
         self.statusBar().showMessage("Ready")  # Show a default message when the app starts
+
+    def save_game_data(self):
+        """Open a save file dialog and save the persistent game data."""
+        filename, _ = QFileDialog.getSaveFileName(
+            self,
+            caption="Save Persistent Game Data",
+            filter="JSON Files (*.json)"
+        )
+        if filename:
+            self.data_manager.save_persistent_data_to_file(filename)
+            # Optionally, show a confirmation message to the user
+            QMessageBox.information(self, "Save Successful", f"Game data saved to {filename}.")
+
+    def load_game_data(self):
+        """Open a load file dialog and load the persistent game data."""
+        filename, _ = QFileDialog.getOpenFileName(
+            self,
+            caption="Load Persistent Game Data",
+            filter="JSON Files (*.json)"
+        )
+        if filename:
+            self.data_manager.load_persistent_data_from_file(filename)
+            # Update UI components after loading new data
+            self.hex_map_view.load_map_data(self.data_manager.get_regions())
+            # Optionally refresh other UI elements
+            self.refresh_ui()
+            # Optionally, show a confirmation message to the user
+            QMessageBox.information(self, "Load Successful", f"Game data loaded from {filename}.")
+
+    
 
     def toggle_hex_coords(self):
         """Toggle the hex coordinates labels on and off."""
@@ -234,15 +274,16 @@ class MainWindow(QMainWindow):
             </div>
             """
             
-      # Display market information (for_sale and wanted)
+        # Display market information (for_sale and wanted)
         markets = hex_data.get('markets', {})
         print(f"Debug: Markets: {markets}")  # Debug output
         for_sale = markets.get('for_sale', [])
         wanted = markets.get('wanted', [])
 
         if for_sale or wanted:
+            # Remove the side-by-side class from the div
             html_content += """
-            <div class="section side-by-side">
+            <div class="section">
             """
             
             if for_sale:
@@ -318,7 +359,7 @@ class MainWindow(QMainWindow):
                 """
             
             html_content += """
-            </div> <!-- End of side-by-side div -->
+            </div> <!-- End of section div -->
             """
         else:
             # If neither for_sale nor wanted have items
@@ -328,6 +369,7 @@ class MainWindow(QMainWindow):
                 <p>No market information available.</p>
             </div>
             """
+        
 
 
         # Close HTML tags

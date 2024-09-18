@@ -27,3 +27,7 @@ Thumbs.db
 *.iss
 *.spec
 /output
+map_data_test.json
+persistent_map_data.json
+persistent_map_data.json
+persistent_map_data.json

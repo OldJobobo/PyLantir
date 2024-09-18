@@ -1,5 +1,3 @@
-/* Existing styles... */
-
 body {
     background-color: #121212;
     color: #e0e0e0;
@@ -15,6 +13,7 @@ h1, h2, h3 {
 }
 
 .section {
+    width: 100%;
     margin-bottom: 30px;
 }
 
@@ -52,21 +51,8 @@ a:hover {
     text-align: center;
 }
 
-/* New styles for tables and side-by-side layout */
-
-.side-by-side {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 20px; /* Space between tables */
-}
-
-.table-container {
-    flex: 1; /* Equal width */
-    min-width: 250px; /* Minimum width to prevent collapsing */
-}
-
 table {
-    width: 100%;
+    width: 100%; /* Ensure the table fills the parent container */
     border-collapse: collapse;
     margin-bottom: 20px;
     margin-top: 10px;
@@ -89,4 +75,23 @@ tr:nth-child(even) {
 
 tr:nth-child(odd) {
     background-color: #1e1e1e;
+}
+
+/* Add or adjust these classes */
+.side-by-side {
+    /* If you want to keep side-by-side, adjust flex properties */
+    /* display: flex; */
+    /* flex-wrap: wrap; */ /* Allows items to wrap to the next line if needed */
+    /* Remove display:flex to stack items vertically */
+}
+
+.table-container {
+    width: 100%;
+    /* If side-by-side is kept, allow the table containers to grow */
+    /* flex: 1; */
+    /* margin-right: 10px; */ /* Optional spacing between tables */
+}
+
+.table-container:last-child {
+    margin-right: 0;
 }

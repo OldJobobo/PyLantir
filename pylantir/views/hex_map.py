@@ -44,18 +44,20 @@ class HexMapView(QGraphicsView):
                 print(f"Toggled hex at ({item.x_coord}, {item.y_coord})")  # Debugging
 
 
-    def create_triangle_marker(self, color='white', size=10):
+    def create_triangle_marker(self, color='white', size=10, circle_color='white', circle_size=4):
         """
-        Create a small triangle marker.
-        
+        Create a triangle marker with a small circle at the top.
+
         Args:
             color (str): Color of the triangle.
             size (int): Size of the triangle.
-        
+            circle_color (str): Color of the circle.
+            circle_size (int): Diameter of the circle.
+
         Returns:
-            QGraphicsPolygonItem: The triangle marker.
+            QGraphicsItemGroup: A group containing the triangle and the circle.
         """
-        # Define the points for the triangle
+        # 1. Define the points for the triangle
         points = [
             QPointF(0, -size / 2),            # Top point
             QPointF(size / 2, size / 2),     # Bottom right point
@@ -64,14 +66,43 @@ class HexMapView(QGraphicsView):
         triangle = QGraphicsPolygonItem(QPolygonF(points))
         triangle.setBrush(QBrush(QColor(color)))
         triangle.setPen(QPen(Qt.NoPen))  # No border
-        
+
         # Set the triangle's origin to the center
         triangle.setTransformOriginPoint(0, 0)
-        
-         # Set the Z-value for the triangle to control the stacking order
+
+        # Set the Z-value for the triangle to control the stacking order
         triangle.setZValue(2)
 
-        return triangle
+        # 2. Create the small circle at the top of the triangle
+        # Calculate the position so that the center of the circle is at (0, -size / 2)
+        # The ellipse's top-left corner is offset by half the circle size
+        circle = QGraphicsEllipseItem(
+            -circle_size / 2,
+            -size / 2 - circle_size / 2,
+            circle_size,
+            circle_size
+        )
+        circle.setBrush(QBrush(QColor(circle_color)))
+        circle.setPen(QPen(Qt.NoPen))  # No border
+
+        # Set the circle's origin to the center
+        circle.setTransformOriginPoint(0, 0)
+
+        # Set the Z-value for the circle to ensure it appears above the triangle
+        circle.setZValue(3)
+
+        # 3. Group the triangle and circle into a single QGraphicsItemGroup
+        group = QGraphicsItemGroup()
+        group.addToGroup(triangle)
+        group.addToGroup(circle)
+
+        # Set the group's origin to the center
+        group.setTransformOriginPoint(0, 0)
+
+        # Optionally, set the group's Z-value if needed
+        group.setZValue(2)
+
+        return group
 
 
     def create_ring_with_dot_marker(self, ring_color='white', dot_color='white', outer_diameter=10, ring_thickness=2, dot_diameter=2):
@@ -164,6 +195,9 @@ class HexMapView(QGraphicsView):
                     # Handle settlement markers
                     self.update_settlement_marker(hex_tile, region.get('settlement'))
 
+                    # Update the persistent map data
+                    self.update_hex_data(x, y, region)
+
             # Process exits and ensure neighbors are placed
             self.process_exits(regions_data)
 
@@ -218,7 +252,7 @@ class HexMapView(QGraphicsView):
 
         if has_faction_units:
             if hex_tile.unit_marker is None:
-                triangle = self.create_triangle_marker(color='white', size=8)
+                triangle = self.create_triangle_marker(color='white', size=8, circle_color='white', circle_size=5)
                 triangle.setParentItem(hex_tile)
                 triangle.setPos(0, 20)
                 hex_tile.unit_marker = triangle
@@ -228,6 +262,9 @@ class HexMapView(QGraphicsView):
                 self.scene.removeItem(hex_tile.unit_marker)
                 hex_tile.unit_marker = None
 
+        # Update the persistent map data
+        self.update_hex_data(hex_tile.x_coord, hex_tile.y_coord, {'units': units})
+        
     def update_settlement_marker(self, hex_tile, settlement):
         if settlement:
             if hex_tile.settlement_marker is None:
@@ -246,6 +283,9 @@ class HexMapView(QGraphicsView):
                 hex_tile.settlement_marker.setParentItem(None)
                 self.scene.removeItem(hex_tile.settlement_marker)
                 hex_tile.settlement_marker = None
+
+        # Update the persistent map data
+        self.update_hex_data(hex_tile.x_coord, hex_tile.y_coord, {'settlement': settlement})
 
     def create_and_place_hex(self, x, y, terrain, regions_data):
         hex_tile = HexTile(x, y, terrain, self, [])
@@ -339,6 +379,7 @@ class HexMapView(QGraphicsView):
             "Avoid",
             "Guard",
             "Contains",
+            "Skills"
         ]
 
         # Set table headers
@@ -392,6 +433,17 @@ class HexMapView(QGraphicsView):
             # Role Display
             role_display = role
 
+            # Skills Extraction and Formatting
+            skills = unit.get('skills', {})
+            known_skills = skills.get('known', [])
+            if known_skills:
+                # Format: "Skill Name (Level X), Skill Name (Level Y)"
+                skills_display = ", ".join([
+                    f"{skill.get('name', 'Unknown Skill')} (Level {skill.get('level', 'N/A')})" for skill in known_skills
+                ])
+            else:
+                skills_display = "None"
+            
             # Compile Table Data
             table_data = [
                 role_display,
@@ -399,7 +451,8 @@ class HexMapView(QGraphicsView):
                 status,
                 avoid_display,
                 guard_display,
-                units_display,         
+                units_display,  
+                skills_display
             ]
 
             for col, data in enumerate(table_data):
