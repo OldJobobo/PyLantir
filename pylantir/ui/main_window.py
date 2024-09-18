@@ -118,116 +118,258 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(message)
     
     def display_hex_data(self, hex_data):
-        """Display hex-specific data (including settlement data) in the text_display widget with debug output."""
+        """Display hex-specific data (including settlement data) in the text_display widget with a modern HTML/CSS layout."""
         self.text_display.clear()  # Clear previous content
-        
+
         # Print the entire hex data for debugging
         print("Debug: Full hex data being loaded:", hex_data)
 
+        # Start assembling HTML content
+        html_content = """
+        <html>
+        <head>
+        <style>
+            body {
+                background-color: #121212;
+                color: #e0e0e0;
+                font-family: helvetica, sans-serif;
+                font-size: 14px;
+                margin: 10px;
+                padding: 20px;
+            }
+            h1, h2, h3 {
+                color: #ffffff;
+                margin-bottom: 10px;
+            }
+            .section {
+                margin-bottom: 30px;
+            }
+            .item {
+                margin-left: 20px;
+            }
+            ul {
+                list-style-type: none;
+                padding-left: 0;
+            }
+            li::before {
+                content: "• ";
+                color: #bb86fc;
+                margin-right: 5px;
+            }
+            a {
+                color: #bb86fc;
+                text-decoration: none;
+            }
+            a:hover {
+                text-decoration: underline;
+            }
+            .status-bar {
+                background-color: #1f1f1f;
+                padding: 10px;
+                position: fixed;
+                bottom: 0;
+                width: 100%;
+                color: #e0e0e0;
+                text-align: center;
+            }
+        </style>
+        </head>
+        <body>
+        """
+
         # Display basic hex information
         coordinates = hex_data.get('coordinates', {})
-                
-        # Access 'x' and 'y' using dictionary keys
         x = coordinates.get('x', 'Unknown')
         y = coordinates.get('y', 'Unknown')
-        
+
         print(f"Debug: Hex Coordinates: {x}, {y}")  # Debug output
-        self.text_display.append(f"Hex Coordinates: {x}, {y}\n")  # Corrected access
-        self.statusBar().showMessage(str(f"Hex: {x}, {y}"))  # Show coordinates in status bar
-       
+
+        self.statusBar().showMessage(f"Hex: ({x}, {y})")  # Show coordinates in status bar
+
         # Display terrain type
         terrain = hex_data.get('terrain', 'Unknown')
-        print(f"Debug: Terrain: {terrain}")  # Debug output
-        self.text_display.append(f"Terrain: {terrain}\n")
-        
+        province = hex_data.get('province', 'Unknown')
+        province = province.capitalize()
+        population = hex_data.get('population', {})
+        population_amount = population.get('amount', 'N/A')
+        population_race = population.get('race', 'N/A')
+        tax = hex_data.get('tax', 'N/A')
+        wages = hex_data.get('wages', {})
+        wages_amount = wages.get('amount', 'N/A')
+        wages_max = wages.get('max', 'N/A')
+
+
+        html_content += f"""
+        <div class="section">
+            <p><h2>{terrain} ({x}, {y}) in {province}</h2></p>
+            <hr>
+            <p><b>Tax Rate:</b> {tax}</p>
+            <p>Max Wages: {wages_max} @ {wages_amount} silver/per man-turn</p>
+            <p> {population_amount} ({population_race}), {wages_amount} (Max: {wages_max})
+        </div>
+        """
+
         # Display settlement information
         settlement = hex_data.get('settlement')
         if settlement:
             settlement_name = settlement.get('name', 'Unknown')
             settlement_size = settlement.get('size', 'Unknown')
             print(f"Debug: Settlement: {settlement}")  # Debug output
-            self.text_display.append(f"Settlement: {settlement_name} (Size: {settlement_size})\n")
+            html_content += f"""
+            <div class="section">
+                <h2>Settlement</h2>
+                <p>{settlement_name} (Size: {settlement_size})</p>
+            </div>
+            """
         else:
             print("Debug: No settlement found")  # Debug output
-            self.text_display.append("Settlement: None\n")
+            html_content += """
+            <div class="section">
+                <h2>Settlement</h2>
+                <p>None</p>
+            </div>
+            """
 
-        # Display population information
-        population = hex_data.get('population', {})
-        population_amount = population.get('amount', 'N/A')
-        population_race = population.get('race', 'N/A')
+        
         print(f"Debug: Population: {population}")  # Debug output
-        self.text_display.append(f"Population: {population_amount} ({population_race})\n")
-        
+        html_content += f"""
+        <div class="section">
+            <h2>Population</h2>
+            <p>{population_amount} ({population_race})</p>
+        </div>
+        """
+
         # Display tax information
-        tax = hex_data.get('tax', 'N/A')
-        print(f"Debug: Tax: {tax}")  # Debug output
-        if tax != 'N/A':
-            self.text_display.append(f"Tax: {tax}\n")
-        else:
-            self.text_display.append("Tax: Not available\n")
         
-         # Display wages information
-        wages = hex_data.get('wages', {})
-        wages_amount = wages.get('amount', 'N/A')
-        wages_max = wages.get('max', 'N/A')
+        print(f"Debug: Tax: {tax}")  # Debug output
+        html_content += f"""
+        <div class="section">
+            <h2>Tax</h2>
+            <p>{tax if tax != 'N/A' else 'Not available'}</p>
+        </div>
+        """
+
+        # Display wages information
+        
         print(f"Debug: Wages: {wages}")  # Debug output
         if wages_amount != 'N/A' and wages_max != 'N/A':
-            self.text_display.append(f"Wages: {wages_amount} (Max: {wages_max})\n")
+            html_content += f"""
+            <div class="section">
+                <h2>Wages</h2>
+                <p>{wages_amount} (Max: {wages_max})</p>
+            </div>
+            """
         else:
-            self.text_display.append("Wages: Not available\n")
+            html_content += """
+            <div class="section">
+                <h2>Wages</h2>
+                <p>Not available</p>
+            </div>
+            """
 
         # Display market information (for_sale and wanted)
         markets = hex_data.get('markets', {})
         print(f"Debug: Markets: {markets}")  # Debug output
         for_sale = markets.get('for_sale', [])
         wanted = markets.get('wanted', [])
-        
+
         if for_sale:
-            self.text_display.append("For Sale:")
+            html_content += """
+            <div class="section">
+                <h2>For Sale</h2>
+                <ul>
+            """
             for item in for_sale:
                 item_name = item.get('name', 'Unknown Item')
                 item_amount = item.get('amount', 'N/A')
                 item_price = item.get('price', 'N/A')
                 print(f"Debug: For Sale Item: {item}")  # Debug output
-                self.text_display.append(f"  - {item_amount} {item_name} at {item_price} silver each")
+                html_content += f"""
+                    <li>{item_amount} {item_name} at {item_price} silver each</li>
+                """
+            html_content += """
+                </ul>
+            </div>
+            """
         else:
             print("Debug: No items for sale")  # Debug output
-            self.text_display.append("For Sale: None\n")
-        
+            html_content += """
+            <div class="section">
+                <h2>For Sale</h2>
+                <p>None</p>
+            </div>
+            """
+
         if wanted:
-            self.text_display.append("\nWanted:")
+            html_content += """
+            <div class="section">
+                <h2>Wanted</h2>
+                <ul>
+            """
             for item in wanted:
                 item_name = item.get('name', 'Unknown Item')
                 item_amount = item.get('amount', 'N/A')
                 item_price = item.get('price', 'N/A')
                 print(f"Debug: Wanted Item: {item}")  # Debug output
-                self.text_display.append(f"  - {item_amount} {item_name} at {item_price} silver each")
+                html_content += f"""
+                    <li>{item_amount} {item_name} at {item_price} silver each</li>
+                """
+            html_content += """
+                </ul>
+            </div>
+            """
         else:
             print("Debug: No wanted items")  # Debug output
-            self.text_display.append("Wanted: None")
-        
-       
-        
-        
-        
-        # Check if there are exits
+            html_content += """
+            <div class="section">
+                <h2>Wanted</h2>
+                <p>None</p>
+            </div>
+            """
+
+        # Display exits
         exits = hex_data.get('exits', [])
         print(f"Debug: Exits: {exits}")  # Debug output
         if exits:
-            self.text_display.append("\nExits:")
+            html_content += """
+            <div class="section">
+                <h2>Exits</h2>
+                <ul>
+            """
             for exit_info in exits:
                 direction = exit_info['direction']
                 neighboring_region = exit_info['region']
-                neighbor_coords = neighboring_region['coordinates']
+                neighbor_coords = neighboring_region.get('coordinates', {})
+                neighbor_x = neighbor_coords.get('x', 'Unknown')
+                neighbor_y = neighbor_coords.get('y', 'Unknown')
                 neighbor_terrain = neighboring_region.get('terrain', 'Unknown')
                 neighbor_province = neighboring_region.get('province', 'Unknown')
-                print(f"Debug: Exit {direction} to ({neighbor_coords['x']}, {neighbor_coords['y']}) "
+                print(f"Debug: Exit {direction} to ({neighbor_x}, {neighbor_y}) "
                     f"in {neighbor_province} ({neighbor_terrain})")  # Debug output
-                self.text_display.append(f"  - {direction} to ({neighbor_coords['x']}, {neighbor_coords['y']}) "
-                                        f"in {neighbor_province} ({neighbor_terrain})")
+                html_content += f"""
+                    <li>{direction} to ({neighbor_x}, {neighbor_y}) in {neighbor_province} ({neighbor_terrain})</li>
+                """
+            html_content += """
+                </ul>
+            </div>
+            """
         else:
             print("Debug: No exits found")  # Debug output
-            self.text_display.append("Exits: None")
+            html_content += """
+            <div class="section">
+                <h2>Exits</h2>
+                <p>None</p>
+            </div>
+            """
+
+        # Close HTML tags
+        html_content += """
+        </body>
+        </html>
+        """
+
+        # Set the HTML content to the text_display widget
+        self.text_display.setHtml(html_content)
 
 
     
