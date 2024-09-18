@@ -41,7 +41,7 @@ class HexMapView(QGraphicsView):
         for item in self.scene.items():
             if isinstance(item, HexTile):
                 item.set_show_coords(self.show_coords)  # Update the visibility of labels
-                print(f"Toggled hex at ({item.x_coord}, {item.y_coord})")  # Debugging
+              
 
 
     def create_triangle_marker(self, color='white', size=10, circle_color='white', circle_size=4):
@@ -319,7 +319,7 @@ class HexMapView(QGraphicsView):
                     # Emit the full region data when a hex is selected
                     region = self.hex_map_tile_to_region.get(item)
                     if region:
-                        print(f"Debug: Emitting hex_selected with data: {region}")  # Debug statement
+                       
                         self.hex_selected.emit(region)
                     break
             super().mousePressEvent(event)

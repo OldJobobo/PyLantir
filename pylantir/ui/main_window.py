@@ -161,16 +161,13 @@ class MainWindow(QMainWindow):
         """Display hex-specific data (including settlement data) in the text_display widget with a modern HTML/CSS layout."""
         self.text_display.clear()  # Clear previous content
 
-        # Print the entire hex data for debugging
-        print("Debug: Full hex data being loaded:", hex_data)
-
         # Read CSS content from the external file
-        css_file_path = os.path.join(os.path.dirname(__file__), 'styles.css')
+        css_file_path = os.path.join(os.path.dirname(__file__), 'hexdata.css')
         try:
             with open(css_file_path, 'r', encoding='utf-8') as css_file:
                 css_content = css_file.read()
         except FileNotFoundError:
-            print(f"Debug: CSS file not found at {css_file_path}")
+            print(f"CSS file not found at {css_file_path}")
             css_content = ""  # Fallback to empty CSS if file not found
 
         # Start assembling HTML content
@@ -188,8 +185,6 @@ class MainWindow(QMainWindow):
         coordinates = hex_data.get('coordinates', {})
         x = coordinates.get('x', 'Unknown')
         y = coordinates.get('y', 'Unknown')
-
-        print(f"Debug: Hex Coordinates: {x}, {y}")  # Debug output
 
         self.statusBar().showMessage(f"Hex: ({x}, {y})")  # Show coordinates in status bar
 
@@ -228,8 +223,6 @@ class MainWindow(QMainWindow):
             </div>
             """
        
-
-        print(f"Debug: Population: {population}")  # Debug output
         html_content += f"""
         <div class="section">
             <p><b>Tax Rate:</b> {tax if tax != 'N/A' else 'Not available'}</p>
@@ -241,7 +234,7 @@ class MainWindow(QMainWindow):
 
        # Display products
         products = hex_data.get('products', [])
-        print(f"Debug: Products: {products}")  # Debug output
+        
         if products:
             html_content += """
             <div class="section">
@@ -255,7 +248,7 @@ class MainWindow(QMainWindow):
             for product in products:
                 product_name = product.get('name', 'Unknown Product')
                 product_amount = product.get('amount', 'N/A')
-                print(f"Debug: Product: {product}")  # Debug output
+                
                 html_content += f"""
                     <tr>
                         <td>{product_name}</td>
@@ -276,7 +269,7 @@ class MainWindow(QMainWindow):
             
         # Display market information (for_sale and wanted)
         markets = hex_data.get('markets', {})
-        print(f"Debug: Markets: {markets}")  # Debug output
+
         for_sale = markets.get('for_sale', [])
         wanted = markets.get('wanted', [])
 
@@ -301,7 +294,7 @@ class MainWindow(QMainWindow):
                     item_name = item.get('name', 'Unknown Item')
                     item_amount = item.get('amount', 'N/A')
                     item_price = item.get('price', 'N/A')
-                    print(f"Debug: For Sale Item: {item}")  # Debug output
+                    
                     html_content += f"""
                         <tr>
                             <td>{item_name}</td>
@@ -314,7 +307,7 @@ class MainWindow(QMainWindow):
                 </div>
                 """
             else:
-                print("Debug: No items for sale")  # Debug output
+
                 html_content += """
                 <div class="table-container">
                     <h2>For Sale</h2>
@@ -337,7 +330,7 @@ class MainWindow(QMainWindow):
                     item_name = item.get('name', 'Unknown Item')
                     item_amount = item.get('amount', 'N/A')
                     item_price = item.get('price', 'N/A')
-                    print(f"Debug: Wanted Item: {item}")  # Debug output
+
                     html_content += f"""
                         <tr>
                             <td>{item_name}</td>
@@ -350,7 +343,7 @@ class MainWindow(QMainWindow):
                 </div>
                 """
             else:
-                print("Debug: No wanted items")  # Debug output
+
                 html_content += """
                 <div class="table-container">
                     <h2>Wanted</h2>
