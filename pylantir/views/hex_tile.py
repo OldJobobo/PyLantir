@@ -18,6 +18,7 @@ class HexTile(QGraphicsItem):
         # Initialize markers as None
         self.unit_marker = None
         self.settlement_marker = None
+        self.structure_marker = None
 
     def calculate_position(self):
         size = self.size
@@ -106,6 +107,18 @@ class HexTile(QGraphicsItem):
             self.terrain_type = terrain_type
             self.update()
 
+    def set_structure(self, structure):
+        """Update the structure and repaint."""
+        if self.structure_marker != structure:
+            self.structure_marker = structure
+            self.update()
+
+    def set_settlement(self, settlement):
+        """Update the settlement and repaint."""
+        if self.settlement_marker != settlement:
+            self.settlement_marker = settlement
+            self.update()
+
     def set_units(self, units):
         """Update the units and repaint."""
         if self.units != units:
@@ -117,5 +130,9 @@ class HexTile(QGraphicsItem):
             self.set_terrain(data['terrain'])
         if 'units' in data:
             self.set_units(data['units'])
+        if 'structure' in data:
+            self.set_structure(data['structure'])
+        if 'settlement' in data:
+            self.set_settlement(data['settlement'])
         # Add more updates as needed
         self.update()

@@ -1,6 +1,9 @@
 # hex_map.py
 
-from PySide6.QtWidgets import QGraphicsView, QGraphicsScene, QTableWidget, QTableWidgetItem, QHeaderView, QGraphicsPolygonItem, QGraphicsEllipseItem, QGraphicsItemGroup
+from PySide6.QtWidgets import (
+    QGraphicsRectItem, QGraphicsView, QGraphicsScene, QTableWidgetItem, QGraphicsPolygonItem,
+    QGraphicsEllipseItem, QGraphicsItemGroup
+    )
 from PySide6.QtGui import QPainter, QPen, QBrush, QColor, QPolygonF
 from PySide6.QtCore import Qt, QPointF, Signal, QObject, QRectF
 from collections import defaultdict
@@ -41,8 +44,6 @@ class HexMapView(QGraphicsView):
         for item in self.scene.items():
             if isinstance(item, HexTile):
                 item.set_show_coords(self.show_coords)  # Update the visibility of labels
-              
-
 
     def create_triangle_marker(self, color='white', size=10, circle_color='white', circle_size=4):
         """
@@ -139,6 +140,40 @@ class HexMapView(QGraphicsView):
 
         return group
 
+    def create_hollow_box_marker(self, box_color='white', outer_size=10, box_thickness=2):
+        """
+        Create a hollow box/square marker with specified color, size, and thickness.
+        
+        Args:
+            box_color (str): Color of the box outline.
+            outer_size (int): Size (width and height) of the outer box.
+            box_thickness (int): Thickness of the box outline.
+        
+        Returns:
+            QGraphicsItemGroup: The hollow box marker.
+        """
+        # Create the outer box (with transparent center)
+        outer_box = QGraphicsRectItem(-outer_size / 2, -outer_size / 2, outer_size, outer_size)
+        outer_box.setBrush(Qt.NoBrush)  # No fill to create the transparent center
+        outer_box.setPen(QPen(QColor(box_color), box_thickness))  # Box outline with specified thickness
+        
+        # Create a group item to combine the box
+        group = QGraphicsItemGroup()
+        group.addToGroup(outer_box)   # Add the outer box
+        
+        # Add a center dot (similar to the ring with a dot)
+        
+        dot_color = 'white'  # You can parameterize this if needed
+        dot_diameter = outer_size / 4  # Adjust size as needed
+        center_dot = QGraphicsEllipseItem(-dot_diameter / 2, -dot_diameter / 2, dot_diameter, dot_diameter)
+        center_dot.setBrush(QBrush(QColor(dot_color)))  # Set the color of the center dot
+        center_dot.setPen(QPen(Qt.NoPen))  # No border for the dot
+        group.addToGroup(center_dot)  # Add the center dot to the group
+        
+        # Set the Z-value to ensure it's drawn above other items
+        group.setZValue(2)
+        
+        return group
 
 
     def load_map_data(self, regions_data):
@@ -169,6 +204,9 @@ class HexMapView(QGraphicsView):
                     y = region['coordinates']['y']
                     terrain = region['terrain']
                     units = region.get('units', [])
+                    structures = region.get('structures', None)
+                    settlement = region.get('settlement', None)
+                    print(f"Processing region at ({x}, {y}) with terrain: {terrain}, structure: {structures}, settlement: {settlement}")
 
                     # Validate coordinates
                     if not self.is_valid_hex_coordinate(x, y):
@@ -193,7 +231,10 @@ class HexMapView(QGraphicsView):
                     self.update_unit_marker(hex_tile, units, faction_number)
 
                     # Handle settlement markers
-                    self.update_settlement_marker(hex_tile, region.get('settlement'))
+                    self.update_settlement_marker(hex_tile, settlement)
+
+                    # Handle structure markers
+                    self.update_structure_marker(hex_tile, structures)
 
                     # Update the persistent map data
                     self.update_hex_data(x, y, region)
@@ -286,6 +327,43 @@ class HexMapView(QGraphicsView):
 
         # Update the persistent map data
         self.update_hex_data(hex_tile.x_coord, hex_tile.y_coord, {'settlement': settlement})
+
+    def update_structure_marker(self, hex_tile, structures):
+        """
+        Update the structure marker on the given hex_tile.
+        
+        Args:
+            hex_tile: The hex tile object to update.
+            structure: The structure data to display. If None, remove the marker.
+        """
+        if structures:
+            if not hasattr(hex_tile, 'structure_marker') or hex_tile.structure_marker is None:
+                # Create the hollow box marker
+                hollow_box = self.create_hollow_box_marker(
+                    box_color='white',      # Color of the box outline
+                    outer_size=12,         # Size of the box
+                    box_thickness=2        # Thickness of the box outline
+                )
+                # Set the marker as a child of the hex_tile for proper positioning
+                hollow_box.setParentItem(hex_tile)
+                # Position the marker 20px to the right of the hex center
+                hollow_box.setPos(25, 0)
+                # Assign the marker to the hex_tile for future reference
+                hex_tile.structure_marker = hollow_box
+        else:
+            if hasattr(hex_tile, 'structure_marker') and hex_tile.structure_marker:
+                # Remove the marker from the scene
+                hex_tile.structure_marker.setParentItem(None)
+                self.scene.removeItem(hex_tile.structure_marker)
+                # Clear the reference
+                hex_tile.structure_marker = None
+        
+        # Update the persistent map data with the structure information
+        if structures:
+            self.update_hex_data(hex_tile.x_coord, hex_tile.y_coord, {'structures': structures})
+        else:
+            self.update_hex_data(hex_tile.x_coord, hex_tile.y_coord, {'structure': None})
+
 
     def create_and_place_hex(self, x, y, terrain, regions_data):
         hex_tile = HexTile(x, y, terrain, self, [])
