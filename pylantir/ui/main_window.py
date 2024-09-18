@@ -68,15 +68,18 @@ class MainWindow(QMainWindow):
                 background-color: #191919;  /* Set the background color to dark grey */
                 border: 1px solid grey;
                 padding: 0px;  /* Add padding around the cell content */
+                color: white;  /* Set the text color to white */
             }
         """)
 
         self.hex_map_view = HexMapView(self.data_manager, self.data_table)
+        self.hex_map_view.setStyleSheet("background-color: darkgrey;")
         self.hex_map_view.report_loaded.connect(self.update_status_bar)
         self.hex_map_view.hex_selected.connect(self.display_hex_data)
 
 
         self.text_display = QTextEdit()
+        self.text_display.setStyleSheet("background-color: #191919; color: white;")  # Set the background color to dark grey and text color to white
         self.text_display.setReadOnly(True)  # Make the text display read-only
 
         # Create a vertical splitter for HexMapView (top) and DataTable (bottom)
