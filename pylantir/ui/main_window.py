@@ -124,54 +124,21 @@ class MainWindow(QMainWindow):
         # Print the entire hex data for debugging
         print("Debug: Full hex data being loaded:", hex_data)
 
+        # Read CSS content from the external file
+        css_file_path = os.path.join(os.path.dirname(__file__), 'styles.css')
+        try:
+            with open(css_file_path, 'r', encoding='utf-8') as css_file:
+                css_content = css_file.read()
+        except FileNotFoundError:
+            print(f"Debug: CSS file not found at {css_file_path}")
+            css_content = ""  # Fallback to empty CSS if file not found
+
         # Start assembling HTML content
-        html_content = """
+        html_content = f"""
         <html>
         <head>
         <style>
-            body {
-                background-color: #121212;
-                color: #e0e0e0;
-                font-family: helvetica, sans-serif;
-                font-size: 14px;
-                margin: 10px;
-                padding: 20px;
-            }
-            h1, h2, h3 {
-                color: #ffffff;
-                margin-bottom: 10px;
-            }
-            .section {
-                margin-bottom: 30px;
-            }
-            .item {
-                margin-left: 20px;
-            }
-            ul {
-                list-style-type: none;
-                padding-left: 0;
-            }
-            li::before {
-                content: "• ";
-                color: #bb86fc;
-                margin-right: 5px;
-            }
-            a {
-                color: #bb86fc;
-                text-decoration: none;
-            }
-            a:hover {
-                text-decoration: underline;
-            }
-            .status-bar {
-                background-color: #1f1f1f;
-                padding: 10px;
-                position: fixed;
-                bottom: 0;
-                width: 100%;
-                color: #e0e0e0;
-                text-align: center;
-            }
+        {css_content}
         </style>
         </head>
         <body>
@@ -197,170 +164,171 @@ class MainWindow(QMainWindow):
         wages = hex_data.get('wages', {})
         wages_amount = wages.get('amount', 'N/A')
         wages_max = wages.get('max', 'N/A')
+        entertainment = hex_data.get('entertainment', 'N/A')
 
+        
 
         html_content += f"""
         <div class="section">
             <p><h2>{terrain} ({x}, {y}) in {province}</h2></p>
             <hr>
-            <p><b>Tax Rate:</b> {tax}</p>
-            <p>Max Wages: {wages_max} @ {wages_amount} silver/per man-turn</p>
-            <p> {population_amount} ({population_race}), {wages_amount} (Max: {wages_max})
+           
         </div>
         """
-
+        
         # Display settlement information
         settlement = hex_data.get('settlement')
         if settlement:
             settlement_name = settlement.get('name', 'Unknown')
             settlement_size = settlement.get('size', 'Unknown')
-            print(f"Debug: Settlement: {settlement}")  # Debug output
+            
             html_content += f"""
             <div class="section">
-                <h2>Settlement</h2>
-                <p>{settlement_name} (Size: {settlement_size})</p>
+                <p><b>Contains:</b> {settlement_name} ({settlement_size})</p>
             </div>
             """
-        else:
-            print("Debug: No settlement found")  # Debug output
-            html_content += """
-            <div class="section">
-                <h2>Settlement</h2>
-                <p>None</p>
-            </div>
-            """
+       
 
-        
         print(f"Debug: Population: {population}")  # Debug output
         html_content += f"""
         <div class="section">
-            <h2>Population</h2>
-            <p>{population_amount} ({population_race})</p>
+            <p><b>Tax Rate:</b> {tax if tax != 'N/A' else 'Not available'}</p>
+            <p><b>Max Wages:</b>  {wages_amount} (Max: {wages_max})</p>
+            <p><b>Population:</b> {population_amount} ({population_race}))</p>
+            <p><b>Entertainment available:</b> {entertainment}</p>
         </div>
         """
 
-        # Display tax information
-        
-        print(f"Debug: Tax: {tax}")  # Debug output
-        html_content += f"""
-        <div class="section">
-            <h2>Tax</h2>
-            <p>{tax if tax != 'N/A' else 'Not available'}</p>
-        </div>
-        """
-
-        # Display wages information
-        
-        print(f"Debug: Wages: {wages}")  # Debug output
-        if wages_amount != 'N/A' and wages_max != 'N/A':
-            html_content += f"""
+       # Display products
+        products = hex_data.get('products', [])
+        print(f"Debug: Products: {products}")  # Debug output
+        if products:
+            html_content += """
             <div class="section">
-                <h2>Wages</h2>
-                <p>{wages_amount} (Max: {wages_max})</p>
+                <h2>Products</h2>
+                <table>
+                    <tr>
+                        <th>Product</th>
+                        <th>Amount</th>
+                    </tr>
+            """
+            for product in products:
+                product_name = product.get('name', 'Unknown Product')
+                product_amount = product.get('amount', 'N/A')
+                print(f"Debug: Product: {product}")  # Debug output
+                html_content += f"""
+                    <tr>
+                        <td>{product_name}</td>
+                        <td>{product_amount}</td>
+                    </tr>
+                """
+            html_content += """
+                </table>
             </div>
             """
         else:
             html_content += """
             <div class="section">
-                <h2>Wages</h2>
-                <p>Not available</p>
+                <h2>Products</h2>
+                <p>None</p>
             </div>
             """
-
-        # Display market information (for_sale and wanted)
+            
+      # Display market information (for_sale and wanted)
         markets = hex_data.get('markets', {})
         print(f"Debug: Markets: {markets}")  # Debug output
         for_sale = markets.get('for_sale', [])
         wanted = markets.get('wanted', [])
 
-        if for_sale:
+        if for_sale or wanted:
             html_content += """
-            <div class="section">
-                <h2>For Sale</h2>
-                <ul>
+            <div class="section side-by-side">
             """
-            for item in for_sale:
-                item_name = item.get('name', 'Unknown Item')
-                item_amount = item.get('amount', 'N/A')
-                item_price = item.get('price', 'N/A')
-                print(f"Debug: For Sale Item: {item}")  # Debug output
-                html_content += f"""
-                    <li>{item_amount} {item_name} at {item_price} silver each</li>
+            
+            if for_sale:
+                html_content += """
+                <div class="table-container">
+                    <h2>For Sale</h2>
+                    <table>
+                        <tr>
+                            <th>Item</th>
+                            <th>Amount</th>
+                            <th>Price (silver)</th>
+                        </tr>
                 """
+                for item in for_sale:
+                    item_name = item.get('name', 'Unknown Item')
+                    item_amount = item.get('amount', 'N/A')
+                    item_price = item.get('price', 'N/A')
+                    print(f"Debug: For Sale Item: {item}")  # Debug output
+                    html_content += f"""
+                        <tr>
+                            <td>{item_name}</td>
+                            <td>{item_amount}</td>
+                            <td>{item_price}</td>
+                        </tr>
+                    """
+                html_content += """
+                    </table>
+                </div>
+                """
+            else:
+                print("Debug: No items for sale")  # Debug output
+                html_content += """
+                <div class="table-container">
+                    <h2>For Sale</h2>
+                    <p>None</p>
+                </div>
+                """
+            
+            if wanted:
+                html_content += """
+                <div class="table-container">
+                    <h2>Wanted</h2>
+                    <table>
+                        <tr>
+                            <th>Item</th>
+                            <th>Amount</th>
+                            <th>Price (silver)</th>
+                        </tr>
+                """
+                for item in wanted:
+                    item_name = item.get('name', 'Unknown Item')
+                    item_amount = item.get('amount', 'N/A')
+                    item_price = item.get('price', 'N/A')
+                    print(f"Debug: Wanted Item: {item}")  # Debug output
+                    html_content += f"""
+                        <tr>
+                            <td>{item_name}</td>
+                            <td>{item_amount}</td>
+                            <td>{item_price}</td>
+                        </tr>
+                    """
+                html_content += """
+                    </table>
+                </div>
+                """
+            else:
+                print("Debug: No wanted items")  # Debug output
+                html_content += """
+                <div class="table-container">
+                    <h2>Wanted</h2>
+                    <p>None</p>
+                </div>
+                """
+            
             html_content += """
-                </ul>
-            </div>
+            </div> <!-- End of side-by-side div -->
             """
         else:
-            print("Debug: No items for sale")  # Debug output
+            # If neither for_sale nor wanted have items
             html_content += """
             <div class="section">
-                <h2>For Sale</h2>
-                <p>None</p>
+                <h2>Market</h2>
+                <p>No market information available.</p>
             </div>
             """
 
-        if wanted:
-            html_content += """
-            <div class="section">
-                <h2>Wanted</h2>
-                <ul>
-            """
-            for item in wanted:
-                item_name = item.get('name', 'Unknown Item')
-                item_amount = item.get('amount', 'N/A')
-                item_price = item.get('price', 'N/A')
-                print(f"Debug: Wanted Item: {item}")  # Debug output
-                html_content += f"""
-                    <li>{item_amount} {item_name} at {item_price} silver each</li>
-                """
-            html_content += """
-                </ul>
-            </div>
-            """
-        else:
-            print("Debug: No wanted items")  # Debug output
-            html_content += """
-            <div class="section">
-                <h2>Wanted</h2>
-                <p>None</p>
-            </div>
-            """
-
-        # Display exits
-        exits = hex_data.get('exits', [])
-        print(f"Debug: Exits: {exits}")  # Debug output
-        if exits:
-            html_content += """
-            <div class="section">
-                <h2>Exits</h2>
-                <ul>
-            """
-            for exit_info in exits:
-                direction = exit_info['direction']
-                neighboring_region = exit_info['region']
-                neighbor_coords = neighboring_region.get('coordinates', {})
-                neighbor_x = neighbor_coords.get('x', 'Unknown')
-                neighbor_y = neighbor_coords.get('y', 'Unknown')
-                neighbor_terrain = neighboring_region.get('terrain', 'Unknown')
-                neighbor_province = neighboring_region.get('province', 'Unknown')
-                print(f"Debug: Exit {direction} to ({neighbor_x}, {neighbor_y}) "
-                    f"in {neighbor_province} ({neighbor_terrain})")  # Debug output
-                html_content += f"""
-                    <li>{direction} to ({neighbor_x}, {neighbor_y}) in {neighbor_province} ({neighbor_terrain})</li>
-                """
-            html_content += """
-                </ul>
-            </div>
-            """
-        else:
-            print("Debug: No exits found")  # Debug output
-            html_content += """
-            <div class="section">
-                <h2>Exits</h2>
-                <p>None</p>
-            </div>
-            """
 
         # Close HTML tags
         html_content += """

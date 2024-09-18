@@ -1,0 +1,92 @@
+/* Existing styles... */
+
+body {
+    background-color: #121212;
+    color: #e0e0e0;
+    font-family: helvetica, sans-serif;
+    font-size: 14px;
+    margin: 10px;
+    padding: 20px;
+}
+
+h1, h2, h3 {
+    color: #acacac;
+    margin-bottom: 10px;
+}
+
+.section {
+    margin-bottom: 30px;
+}
+
+.item {
+    margin-left: 20px;
+}
+
+ul {
+    list-style-type: none;
+    padding-left: 0;
+}
+
+li::before {
+    content: "• ";
+    color: #bb86fc;
+    margin-right: 5px;
+}
+
+a {
+    color: #bb86fc;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+.status-bar {
+    background-color: #1f1f1f;
+    padding: 10px;
+    position: fixed;
+    bottom: 5px;
+    width: 100%;
+    color: #e0e0e0;
+    text-align: center;
+}
+
+/* New styles for tables and side-by-side layout */
+
+.side-by-side {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px; /* Space between tables */
+}
+
+.table-container {
+    flex: 1; /* Equal width */
+    min-width: 250px; /* Minimum width to prevent collapsing */
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+    margin-top: 10px;
+}
+
+th, td {
+    border: 1px solid #e0e0e0;
+    padding: 8px;
+    text-align: left;
+}
+
+th {
+    background-color: #1f1f1f;
+    color: #ffffff;
+}
+
+tr:nth-child(even) {
+    background-color: #2a2a2a;
+}
+
+tr:nth-child(odd) {
+    background-color: #1e1e1e;
+}
