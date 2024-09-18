@@ -363,16 +363,33 @@ class HexMapView(QGraphicsView):
         self.selected_hex_tile.setZValue(1)  # Bring the selected hex tile to the foreground
 
     def update_data_table(self, hex_tile):
+        """
+        Update the data table with units and structures within the selected hex_tile.
+        
+        Args:
+            hex_tile: The selected hex tile object.
+        """
         print(f"Updating data table with units: {hex_tile.units}")
         self.data_table.setRowCount(0)
         self.data_table.setColumnCount(0)
 
-        if not hex_tile.units:
-            print("No units to display.")
+        # Retrieve region data associated with the hex_tile
+        region = self.hex_map_tile_to_region.get(hex_tile)
+        if not region:
+            print(f"No region data found for hex_tile: {hex_tile}")
             return
 
+        structures = region.get('structures', [])
+        print(f"Structures: {structures}")
+
+        # Check if there are units or structures to display
+        if not hex_tile.units and not structures:
+            print("No units or structures to display.")
+            return
+        
         # Define the columns you want to display
         columns = [
+            "Structure",
             "Unit Name",
             "Faction Name",
             "Status",
@@ -386,81 +403,27 @@ class HexMapView(QGraphicsView):
         self.data_table.setColumnCount(len(columns))
         self.data_table.setHorizontalHeaderLabels(columns)
 
-        # Determine the number of rows based on units
-        self.data_table.setRowCount(len(hex_tile.units))
+        # Calculate total rows needed
+        structure_unit_count = sum(len(structure.get('units', [])) for structure in structures)
+        total_rows = len(hex_tile.units) + structure_unit_count
+        self.data_table.setRowCount(total_rows)
 
-        for row, unit in enumerate(hex_tile.units):
-            # Extract and format each piece of data
+        # Initialize row index
+        row_index = 0
 
-            # Status (from 'attitude')
-            status = str( ' ' + unit.get('attitude', 'neutral') + ' ')
-
-            # Faction Information
-            faction_info = unit.get('faction', {}).get('name', 'Unknown Faction')
-            faction_number = str(unit.get('faction', {}).get('number', ''))
-
-            # Flags (from 'flags')
-            flags = unit.get('flags', {})
-            avoid = flags.get('avoid', False)
-            guard = flags.get('guard', False)
-
-            # Units Details (from 'items')
-            units_details = unit.get('units') or unit.get('items') or []
-
-            # Role
-            role = str( ' ' + unit.get('name', '')) + ' (' + str(unit.get('number', '')) + ') '
-     
-            # Faction Display
-            faction_display = f" {faction_info} (#{faction_number}) " if faction_number else faction_info
-
-            # Flags Display
-            avoid_display = " Yes " if avoid else " No "
-            guard_display = " Yes " if guard else " No "
-
-            # Units Display
-            if isinstance(units_details, list):
-                # Convert list of dictionaries to a readable string
-                units_display = " ; ".join([f"{item.get('amount', '')}x {item.get('name', '')} " for item in units_details])
-                # Optional: Create a detailed tooltip
-                detailed_units = "\n".join([f"{item.get('amount', '')}x {item.get('name', '')} ({item.get('tag', '')})" for item in units_details])
-            elif isinstance(units_details, dict):
-                units_display = f"Avoid: {avoid_display}, Guard: {guard_display}"
-                detailed_units = units_display
-            else:
-                units_display = str(units_details)
-                detailed_units = units_display
-
-            # Role Display
-            role_display = role
-
-            # Skills Extraction and Formatting
-            skills = unit.get('skills', {})
-            known_skills = skills.get('known', [])
-            if known_skills:
-                # Format: "Skill Name (Level X), Skill Name (Level Y)"
-                skills_display = ", ".join([
-                    f"{skill.get('name', 'Unknown Skill')} (Level {skill.get('level', 'N/A')})" for skill in known_skills
-                ])
-            else:
-                skills_display = "None"
+        # Process structures and their units
+        for structure in structures:
+            structure_name = f"{structure.get('name', 'Unknown')} ({structure.get('number', 'N/A')})"
+            structure_units = structure.get('units', [])
             
-            # Compile Table Data
-            table_data = [
-                role_display,
-                faction_display,
-                status,
-                avoid_display,
-                guard_display,
-                units_display,  
-                skills_display
-            ]
+            for unit in structure_units:
+                self.add_unit_to_table(row_index, unit, structure_name)
+                row_index += 1
 
-            for col, data in enumerate(table_data):
-                item = QTableWidgetItem(data)
-                if col == 5:  # 'Units' column
-                    item.setToolTip(detailed_units)
-                self.data_table.setItem(row, col, item)
-                print(f"Set row {row}, column {col} to {data}")
+        # Process units directly in the hex_tile (not part of any structure)
+        for unit in hex_tile.units:
+            self.add_unit_to_table(row_index, unit, structure_name=None)  # No structure associated
+            row_index += 1
 
         # Adjust the table for better readability
         self.data_table.resizeColumnsToContents()
@@ -473,3 +436,91 @@ class HexMapView(QGraphicsView):
                 item = self.data_table.item(row, col)
                 if item:
                     item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)  # Align left and vertically center
+
+    def add_unit_to_table(self, row, unit, structure_name=None):
+        """
+        Add a unit to the data table at the specified row.
+        
+        Args:
+            row (int): The row index in the table.
+            unit (dict): The unit data.
+            structure_name (str, optional): The name of the structure the unit belongs to. Defaults to None.
+        """
+        # Structure Display
+        structure_display = structure_name if structure_name else "None"
+
+        # Unit Name and Number
+        unit_name = unit.get('name', 'Unknown')
+        unit_number = unit.get('number', 'N/A')
+        role_display = f"{unit_name} ({unit_number})"
+
+        # Faction Information
+        faction = unit.get('faction', {})
+        faction_info = faction.get('name', 'Unknown Faction')
+        faction_number = faction.get('number', '')
+        faction_display = f"{faction_info} (#{faction_number})" if faction_number else faction_info
+
+        # Status (from 'attitude')
+        status = f" {unit.get('attitude', 'neutral')} "
+
+        # Flags (from 'flags')
+        flags = unit.get('flags', {})
+        avoid = flags.get('avoid', False)
+        guard = flags.get('guard', False)
+        avoid_display = "Yes" if avoid else "No"
+        guard_display = "Yes" if guard else "No"
+
+        # Units Details (from 'items' or 'units')
+        units_details = unit.get('units') or unit.get('items') or []
+        if isinstance(units_details, list):
+            # Convert list of dictionaries to a readable string
+            units_display = " ; ".join([
+                f"{item.get('amount', '')}x {item.get('name', '')}" for item in units_details
+            ])
+            # Create a detailed tooltip
+            detailed_units = "\n".join([
+                f"{item.get('amount', '')}x {item.get('name', '')} ({item.get('tag', '')})" for item in units_details
+            ])
+        elif isinstance(units_details, dict):
+            units_display = f"Avoid: {avoid_display}, Guard: {guard_display}"
+            detailed_units = units_display
+        else:
+            units_display = str(units_details)
+            detailed_units = units_display
+
+        # Skills Extraction and Formatting
+        skills = unit.get('skills', {})
+        known_skills = skills.get('known', [])
+        if known_skills:
+            # Format: "Skill Name (Level X), Skill Name (Level Y)"
+            skills_display = ", ".join([
+                f"{skill.get('name', 'Unknown Skill')} (Level {skill.get('level', 'N/A')})" for skill in known_skills
+            ])
+            # Create a detailed tooltip for skills
+            detailed_skills = "\n".join([
+                f"{skill.get('name', 'Unknown Skill')}: Level {skill.get('level', 'N/A')}, Days: {skill.get('skill_days', 'N/A')}, Tag: {skill.get('tag', 'N/A')}" for skill in known_skills
+            ])
+        else:
+            skills_display = "None"
+            detailed_skills = "No known skills."
+
+        # Compile Table Data
+        table_data = [
+            structure_display,
+            role_display,
+            faction_display,
+            status,
+            avoid_display,
+            guard_display,
+            units_display,  
+            skills_display
+        ]
+
+        for col, data in enumerate(table_data):
+            item = QTableWidgetItem(data)
+            if col == 6:  # 'Contains' column
+                item.setToolTip(detailed_units)
+            if col == 7:  # 'Skills' column
+                item.setToolTip(detailed_skills)
+            self.data_table.setItem(row, col, item)
+            print(f"Set row {row}, column {col} to {data}")

@@ -485,28 +485,28 @@ class MainWindow(QMainWindow):
         self.display_parsed_data()
 
     def display_parsed_data(self):
-        """Display faction, date, and engine information in the text_display widget."""
+        """Display faction, date, and engine information in the hex_data_tab widget."""
         # Display faction information
         faction_info = self.data_manager.get_faction_info()
-        self.text_display.append(f"Faction: {faction_info['name']} [{faction_info['number']}]")
+        self.hex_data_tab.append(f"Faction: {faction_info['name']} [{faction_info['number']}]")
 
         # Display date information
         date_info = self.data_manager.get_date_info()
-        self.text_display.append(f"Date: {date_info['month']}, Year {date_info['year']}")
+        self.hex_data_tab.append(f"Date: {date_info['month']}, Year {date_info['year']}")
 
         # Display engine information
         engine_info = self.data_manager.get_engine_info()
-        self.text_display.append(f"Engine: {engine_info['ruleset']} {engine_info['ruleset_version']}, Version {engine_info['version']}")
+        self.hex_data_tab.append(f"Engine: {engine_info['ruleset']} {engine_info['ruleset_version']}, Version {engine_info['version']}")
 
         # Display attitudes
         attitudes = self.data_manager.get_attitudes()
-        self.text_display.append(f"Default Attitude: {attitudes['default']}")
+        self.hex_data_tab.append(f"Default Attitude: {attitudes['default']}")
 
         # Display administrative settings
         admin_settings = self.data_manager.get_administrative_settings()
-        self.text_display.append(f"Password Unset: {admin_settings['password_unset']}")
-        self.text_display.append(f"Show Unit Attitudes: {admin_settings['show_unit_attitudes']}")
-        self.text_display.append(f"Times Sent: {admin_settings['times_sent']}")
+        self.hex_data_tab.append(f"Password Unset: {admin_settings['password_unset']}")
+        self.hex_data_tab.append(f"Show Unit Attitudes: {admin_settings['show_unit_attitudes']}")
+        self.hex_data_tab.append(f"Times Sent: {admin_settings['times_sent']}")
 
     def show_about(self):
         """Show the about dialog."""
@@ -520,3 +520,4 @@ class MainWindow(QMainWindow):
         """Save persistent data when the application is closed."""
         self.data_manager.save_persistent_data('persistent_map_data.json')
         super().closeEvent(event)
+
