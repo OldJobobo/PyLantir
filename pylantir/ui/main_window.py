@@ -73,13 +73,13 @@ class MainWindow(QMainWindow):
         """)
 
         self.hex_map_view = HexMapView(self.data_manager, self.data_table)
-        self.hex_map_view.setStyleSheet("background-color: darkgrey;")
+        self.hex_map_view.setStyleSheet("background-color: #1F1F1F; border: 1px solid grey;")
         self.hex_map_view.report_loaded.connect(self.update_status_bar)
         self.hex_map_view.hex_selected.connect(self.display_hex_data)
 
 
         self.text_display = QTextEdit()
-        self.text_display.setStyleSheet("background-color: #191919; color: white;")  # Set the background color to dark grey and text color to white
+        self.text_display.setStyleSheet("background-color: #191919; color: white; border: 1px solid grey; padding: 10px;")  # Set the background color to dark grey and text color to white
         self.text_display.setReadOnly(True)  # Make the text display read-only
 
         # Create a vertical splitter for HexMapView (top) and DataTable (bottom)
@@ -132,13 +132,13 @@ class MainWindow(QMainWindow):
         y = coordinates.get('y', 'Unknown')
         
         print(f"Debug: Hex Coordinates: {x}, {y}")  # Debug output
-        self.text_display.append(f"Hex Coordinates: {x}, {y}")  # Corrected access
+        self.text_display.append(f"Hex Coordinates: {x}, {y}\n")  # Corrected access
         self.statusBar().showMessage(str(f"Hex: {x}, {y}"))  # Show coordinates in status bar
        
         # Display terrain type
         terrain = hex_data.get('terrain', 'Unknown')
         print(f"Debug: Terrain: {terrain}")  # Debug output
-        self.text_display.append(f"Terrain: {terrain}")
+        self.text_display.append(f"Terrain: {terrain}\n")
         
         # Display settlement information
         settlement = hex_data.get('settlement')
@@ -146,25 +146,25 @@ class MainWindow(QMainWindow):
             settlement_name = settlement.get('name', 'Unknown')
             settlement_size = settlement.get('size', 'Unknown')
             print(f"Debug: Settlement: {settlement}")  # Debug output
-            self.text_display.append(f"Settlement: {settlement_name} (Size: {settlement_size})")
+            self.text_display.append(f"Settlement: {settlement_name} (Size: {settlement_size})\n")
         else:
             print("Debug: No settlement found")  # Debug output
-            self.text_display.append("Settlement: None")
+            self.text_display.append("Settlement: None\n")
 
         # Display population information
         population = hex_data.get('population', {})
         population_amount = population.get('amount', 'N/A')
         population_race = population.get('race', 'N/A')
         print(f"Debug: Population: {population}")  # Debug output
-        self.text_display.append(f"Population: {population_amount} ({population_race})")
+        self.text_display.append(f"Population: {population_amount} ({population_race})\n")
         
         # Display tax information
         tax = hex_data.get('tax', 'N/A')
         print(f"Debug: Tax: {tax}")  # Debug output
         if tax != 'N/A':
-            self.text_display.append(f"Tax: {tax}")
+            self.text_display.append(f"Tax: {tax}\n")
         else:
-            self.text_display.append("Tax: Not available")
+            self.text_display.append("Tax: Not available\n")
         
          # Display wages information
         wages = hex_data.get('wages', {})
@@ -172,9 +172,9 @@ class MainWindow(QMainWindow):
         wages_max = wages.get('max', 'N/A')
         print(f"Debug: Wages: {wages}")  # Debug output
         if wages_amount != 'N/A' and wages_max != 'N/A':
-            self.text_display.append(f"Wages: {wages_amount} (Max: {wages_max})")
+            self.text_display.append(f"Wages: {wages_amount} (Max: {wages_max})\n")
         else:
-            self.text_display.append("Wages: Not available")
+            self.text_display.append("Wages: Not available\n")
 
         # Display market information (for_sale and wanted)
         markets = hex_data.get('markets', {})
@@ -192,10 +192,10 @@ class MainWindow(QMainWindow):
                 self.text_display.append(f"  - {item_amount} {item_name} at {item_price} silver each")
         else:
             print("Debug: No items for sale")  # Debug output
-            self.text_display.append("For Sale: None")
+            self.text_display.append("For Sale: None\n")
         
         if wanted:
-            self.text_display.append("Wanted:")
+            self.text_display.append("\nWanted:")
             for item in wanted:
                 item_name = item.get('name', 'Unknown Item')
                 item_amount = item.get('amount', 'N/A')
@@ -214,7 +214,7 @@ class MainWindow(QMainWindow):
         exits = hex_data.get('exits', [])
         print(f"Debug: Exits: {exits}")  # Debug output
         if exits:
-            self.text_display.append("Exits:")
+            self.text_display.append("\nExits:")
             for exit_info in exits:
                 direction = exit_info['direction']
                 neighboring_region = exit_info['region']
