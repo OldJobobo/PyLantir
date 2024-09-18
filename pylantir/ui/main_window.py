@@ -1,5 +1,8 @@
 import json
-from PySide6.QtWidgets import QMainWindow, QFileDialog, QMessageBox, QLineEdit, QTextEdit, QWidget, QVBoxLayout, QTableWidget, QSplitter
+from PySide6.QtWidgets import (
+    QMainWindow, QFileDialog, QMessageBox, QLineEdit, QTextEdit,
+    QWidget, QVBoxLayout, QTableWidget, QSplitter, QTabWidget, QTableWidgetItem
+)
 from PySide6.QtGui import QAction, Qt
 import os
 
@@ -82,15 +85,37 @@ class MainWindow(QMainWindow):
         """)
 
         self.hex_map_view = HexMapView(self.data_manager, self.data_table)
-
         self.hex_map_view.setStyleSheet("background-color: #1F1F1F; border: 1px solid grey;")
         self.hex_map_view.report_loaded.connect(self.update_status_bar)
         self.hex_map_view.hex_selected.connect(self.display_hex_data)
 
 
-        self.text_display = QTextEdit()
-        self.text_display.setStyleSheet("background-color: #191919; color: white; border: 1px solid grey; padding: 10px;")  # Set the background color to dark grey and text color to white
-        self.text_display.setReadOnly(True)  # Make the text display read-only
+       # Create a QTabWidget instead of a single QTextEdit
+        self.tab_widget = QTabWidget()
+
+        # Hex Data Tab
+        self.hex_data_tab = QTextEdit()
+        self.hex_data_tab.setStyleSheet("background-color: #191919; color: white; border: 1px solid grey; padding: 10px;")
+        self.hex_data_tab.setReadOnly(True)
+        self.tab_widget.addTab(self.hex_data_tab, "Hex Data")
+
+        # Orders Tab
+        self.orders_tab = QTableWidget()
+        self.orders_tab.setSortingEnabled(True)
+        self.orders_tab.setStyleSheet("""
+            QTableView {
+                gridline-color: gray;
+                background-color: #191919;
+                border: 1px solid grey;
+                padding: 0px;
+                color: white;
+            }
+        """)
+        self.orders_tab.setColumnCount(2)
+        self.orders_tab.setHorizontalHeaderLabels(["Unit Name", "Order"])
+        self.orders_tab.horizontalHeader().setStretchLastSection(True)
+        self.orders_tab.setEditTriggers(QTableWidget.NoEditTriggers)  # Make the table read-only
+        self.tab_widget.addTab(self.orders_tab, "Orders")
 
         # Create a vertical splitter for HexMapView (top) and DataTable (bottom)
         left_splitter = QSplitter()
@@ -105,7 +130,7 @@ class MainWindow(QMainWindow):
         main_splitter = QSplitter()
         main_splitter.setOrientation(Qt.Horizontal)
         main_splitter.addWidget(left_splitter)  # Left side: hex map and data table
-        main_splitter.addWidget(self.text_display)  # Right side: text display
+        main_splitter.addWidget(self.tab_widget)  # Right side: text display
 
         # Set the sizes to give the left part (hex map + data table) more space than the text display
         main_splitter.setSizes([int(self.width() * 0.75), int(self.width() * 0.25)])  # Set proportions (800px to left, 400px to right)
@@ -159,7 +184,8 @@ class MainWindow(QMainWindow):
     
     def display_hex_data(self, hex_data):
         """Display hex-specific data (including settlement data) in the text_display widget with a modern HTML/CSS layout."""
-        self.text_display.clear()  # Clear previous content
+        self.hex_data_tab.clear()  # Clear previous content
+        self.orders_tab.setRowCount(0)
 
         # Read CSS content from the external file
         css_file_path = os.path.join(os.path.dirname(__file__), 'hexdata.css')
@@ -372,10 +398,59 @@ class MainWindow(QMainWindow):
         """
 
         # Set the HTML content to the text_display widget
-        self.text_display.setHtml(html_content)
+        self.hex_data_tab.setHtml(html_content)
+        # Now, populate the Orders tab
+        self.populate_orders_tab(hex_data)
 
+    def populate_orders_tab(self, hex_data):
+        """Populate the Orders tab with orders from units in the hex."""
+        self.orders_tab.setRowCount(0)
+        self.orders_tab.setColumnCount(2)
+        self.orders_tab.setHorizontalHeaderLabels(["Unit Name", "Order"])
 
-    
+        # Collect all orders from units
+        orders = []
+        units = hex_data.get('units', [])
+        for unit in units:
+            unit_name = unit.get('name', 'Unknown Unit')
+            unit_orders = unit.get('orders', [])
+            for order in unit_orders:
+                order_text = order.get('order', 'No Order Description')
+                orders.append((unit_name, order_text))
+
+        if orders:
+            self.orders_tab.setRowCount(len(orders))
+            for row, (unit_name, order_text) in enumerate(orders):
+                # Unit Name
+                unit_item = QTableWidgetItem(unit_name)
+                unit_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+                self.orders_tab.setItem(row, 0, unit_item)
+
+                # Order
+                order_item = QTableWidgetItem(order_text)
+                order_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+                self.orders_tab.setItem(row, 1, order_item)
+
+                print(f"Set Orders tab row {row}: Unit='{unit_name}', Order='{order_text}'")
+        else:
+            # No orders to display
+            self.orders_tab.setRowCount(1)
+            self.orders_tab.setItem(0, 0, QTableWidgetItem("No Orders"))
+            self.orders_tab.setItem(0, 1, QTableWidgetItem(""))
+            print("No orders to display in Orders tab.")
+
+        # Adjust the table for better readability
+        self.orders_tab.resizeColumnsToContents()
+        self.orders_tab.horizontalHeader().setStretchLastSection(True)
+        self.orders_tab.setSortingEnabled(True)
+
+        # Optionally, set alignment for all cells
+        for row in range(self.orders_tab.rowCount()):
+            for col in range(self.orders_tab.columnCount()):
+                item = self.orders_tab.item(row, col)
+                if item:
+                    item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+
     def open_turn_report(self):
         """Open a turn report file and load its data into the application."""
         options = QFileDialog.Options()
