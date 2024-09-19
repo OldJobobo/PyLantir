@@ -194,13 +194,10 @@ class MainWindow(QMainWindow):
         if filename:
             self.data_manager.load_persistent_data_from_file(filename)
             # Update UI components after loading new data
-            self.hex_map_view.load_map_data(self.data_manager.get_regions())
-            # Optionally refresh other UI elements
-            self.refresh_ui()
-            # Optionally, show a confirmation message to the user
-            QMessageBox.information(self, "Load Successful", f"Game data loaded from {filename}.")
-
-    
+            regions = self.data_manager.get_regions()
+            self.hex_map_view.load_map_data(regions)
+            self.display_parsed_data()
+            self.statusBar().showMessage(f"Game data loaded from {filename}")
 
     def toggle_hex_coords(self):
         """Toggle the hex coordinates labels on and off."""

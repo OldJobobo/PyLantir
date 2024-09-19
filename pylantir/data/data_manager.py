@@ -48,7 +48,11 @@ class DataManager:
 
     def _merge_persistent_data(self, x, y):
         if (x, y) in self.persistent_map_data:
+            if (x, y) not in self.regions:
+            # If the region doesn't exist, initialize it with an empty dictionary or data from persistent map
+                self.regions[(x, y)] = {}
             self.regions[(x, y)].update(self.persistent_map_data[(x, y)])
+
 
     def save_persistent_data(self, filename):
         """
@@ -86,6 +90,8 @@ class DataManager:
                 # Convert string keys back to tuples
                 self.persistent_map_data = {tuple(map(int, k.split(','))): v for k, v in data.items()}
                 self.regions = self.persistent_map_data
+                self._process_report_data()
+                
                 print("Persistent data loaded successfully.")
             except Exception as e:
                 print(f"Error loading persistent data: {e}")
