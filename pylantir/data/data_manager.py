@@ -291,3 +291,41 @@ class DataManager:
             event for event in self.events
             if event.get('unit', {}).get('number') in unit_numbers
         ]
+
+    def get_all_events_for_hex(self, x, y):
+        """
+        Retrieve all unique events associated with a specific hex.
+        
+        Args:
+            x (int): X-coordinate of the hex.
+            y (int): Y-coordinate of the hex.
+        
+        Returns:
+            list: A list of unique events relevant to the hex.
+        """
+        # Fetch region-based events
+        region_events = self.get_events_for_region(x, y)
+        
+        # Fetch units in the hex
+        region = self.get_region(x, y)
+        if region:
+            units = region.get('units', [])
+        else:
+            units = []
+        unit_numbers = [unit.get('number') for unit in units if unit.get('number') is not None]
+        
+        # Fetch unit-based events
+        unit_events = self.get_events_for_units(unit_numbers)
+        
+        # Combine events and remove duplicates
+        unique_events = []
+        seen_messages = set()  # Assuming 'message' is unique for each event
+        
+        for event in region_events + unit_events:
+            message = event.get('message')
+            if message and message not in seen_messages:
+                unique_events.append(event)
+                seen_messages.add(message)
+        
+        return unique_events
+

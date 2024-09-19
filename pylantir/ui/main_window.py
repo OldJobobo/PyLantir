@@ -486,7 +486,7 @@ class MainWindow(QMainWindow):
     def populate_events_tab(self, hex_data):
         """
         Populate the Events tab with event data from the selected hex.
-        
+    
         Args:
             hex_data (dict): The data associated with the selected hex tile.
         """
@@ -498,53 +498,19 @@ class MainWindow(QMainWindow):
             print(f"Warning: Invalid coordinates in hex_data: {coordinates}")
             return
 
-        # -----------------------------
-        # 1. Fetch Region-Based Events
-        # -----------------------------
-        region_events = self.data_manager.get_events_for_region(x, y)
-
-        # -----------------------------
-        # 2. Fetch Unit-Based Events
-        # -----------------------------
-        units = hex_data.get('units', [])
-        unit_numbers = [unit.get('number') for unit in units if unit.get('number') is not None]
+        # Use the new DataManager method to get all unique events for the hex
+        events = self.data_manager.get_all_events_for_hex(x, y)
+        print(f"Found {len(events)} events for region ({x}, {y})")  # Debug statement
         
-        if not unit_numbers:
-            print(f"No units found in hex ({x}, {y}).")
-            unit_events = []
-        else:
-            unit_events = self.data_manager.get_events_for_units(unit_numbers)
-
-        # -----------------------------
-        # 3. Combine Events
-        # -----------------------------
-        combined_events = region_events + unit_events
-
-        print(f"Found {len(combined_events)} events for region ({x}, {y})")  # Debug statement
-
-        # -----------------------------
-        # 4. Populate the Events Table
-        # -----------------------------
         self.events_tab.clearContents()  # Clear previous content
         self.events_tab.setRowCount(0)   # Reset the table
 
-        if combined_events:
-            self.events_tab.setRowCount(len(combined_events))
-            self.events_tab.setColumnCount(3)  # Category, Message, Unit, Region
-            self.events_tab.setHorizontalHeaderLabels([ "Unit", "Category", "Message"])
+        if events:
+            self.events_tab.setRowCount(len(events))
+            self.events_tab.setColumnCount(3)  # Update to 3 columns
+            self.events_tab.setHorizontalHeaderLabels(["Unit", "Category", "Message"])  # Set headers accordingly
 
-            for row, event in enumerate(combined_events):
-                # Category
-                category = event.get('category', 'N/A').capitalize()
-                category_item = QTableWidgetItem(category)
-                category_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-               
-
-                # Message
-                message = event.get('message', 'No message provided.')
-                message_item = QTableWidgetItem(message)
-                message_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-
+            for row, event in enumerate(events):
                 # Unit
                 unit = event.get('unit')
                 if unit:
@@ -555,39 +521,30 @@ class MainWindow(QMainWindow):
                     unit_text = "N/A"
                 unit_item = QTableWidgetItem(unit_text)
                 unit_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-                
+                self.events_tab.setItem(row, 0, unit_item)  # Column 0: Unit
 
-                # Region
-                region = event.get('region')
-                if region:
-                    terrain = region.get('terrain', 'Unknown Terrain')
-                    province = region.get('province', 'Unknown Province')
-                    coordinates = region.get('coordinates', {})
-                    rx = coordinates.get('x', 'N/A')
-                    ry = coordinates.get('y', 'N/A')
-                    rz = coordinates.get('z', 'N/A')
-                    location_text = f"{terrain.capitalize()} ({rx}, {ry}, {rz}) in {province}"
-                else:
-                    location_text = "N/A"
-                region_item = QTableWidgetItem(location_text)
-                region_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-                
-                self.events_tab.setItem(row, 0, unit_item)
-                self.events_tab.setItem(row, 1, category_item)
-                self.events_tab.setItem(row, 2, message_item)
-                
-                print(f"Set Events tab row {row}: Category='{category}', Message='{message}', Unit='{unit_text}', Region='{location_text}'")
+                # Category
+                category = event.get('category', 'N/A').capitalize()
+                category_item = QTableWidgetItem(category)
+                category_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+                self.events_tab.setItem(row, 1, category_item)  # Column 1: Category
+
+                # Message
+                message = event.get('message', 'No message provided.')
+                message_item = QTableWidgetItem(message)
+                message_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+                self.events_tab.setItem(row, 2, message_item)  # Column 2: Message
+
+                print(f"Set Events tab row {row}: Unit='{unit_text}', Category='{category}', Message='{message}'")
         else:
             # No events to display
             self.events_tab.setRowCount(1)
-            self.events_tab.setSpan(0, 0, 1, 4)  # Span across all columns
+            self.events_tab.setSpan(0, 0, 1, 3)  # Span across all three columns
             no_event_item = QTableWidgetItem("No events to display.")
             no_event_item.setTextAlignment(Qt.AlignCenter)
             self.events_tab.setItem(0, 0, no_event_item)
-
-        # -----------------------------
-        # 5. Final Adjustments
-        # -----------------------------
+        
+        # Adjust the table for better readability
         self.events_tab.resizeColumnsToContents()
         self.events_tab.horizontalHeader().setStretchLastSection(True)
         self.events_tab.setSortingEnabled(True)
