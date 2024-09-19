@@ -276,3 +276,18 @@ class DataManager:
         return [event for event in self.events if 
                 event.get('region', {}).get('coordinates', {}).get('x') == x and 
                 event.get('region', {}).get('coordinates', {}).get('y') == y]
+
+    def get_events_for_units(self, unit_numbers):
+        """
+        Retrieve events associated with specific units.
+        
+        Args:
+            unit_numbers (list): A list of unit numbers.
+        
+        Returns:
+            list: A list of events associated with the given units.
+        """
+        return [
+            event for event in self.events
+            if event.get('unit', {}).get('number') in unit_numbers
+        ]
