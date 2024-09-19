@@ -52,7 +52,7 @@ a:hover {
 }
 
 table {
-    width: 100%; /* Ensure the table fills the parent container */
+ 
     border-collapse: collapse;
     margin-bottom: 20px;
     margin-top: 10px;
@@ -77,19 +77,11 @@ tr:nth-child(odd) {
     background-color: #1e1e1e;
 }
 
-/* Add or adjust these classes */
-.side-by-side {
-    /* If you want to keep side-by-side, adjust flex properties */
-    /* display: flex; */
-    /* flex-wrap: wrap; */ /* Allows items to wrap to the next line if needed */
-    /* Remove display:flex to stack items vertically */
-}
-
 .table-container {
-    width: 100%;
-    /* If side-by-side is kept, allow the table containers to grow */
-    /* flex: 1; */
-    /* margin-right: 10px; */ /* Optional spacing between tables */
+    display: flex;
+    flex-direction: column;
+    flex: 1; 
+    margin-right: 10px; /* Optional spacing between tables */
 }
 
 .table-container:last-child {

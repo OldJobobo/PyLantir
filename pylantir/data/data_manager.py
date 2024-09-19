@@ -8,6 +8,7 @@ class DataManager:
         self.report_data = {}  # This will store the entire report
         self.persistent_map_data = {}
         self.regions = {}
+        self.events = []  # Add this line to store events
 
     def load_report(self, filename):
         """
@@ -41,6 +42,9 @@ class DataManager:
             x, y = coordinates['x'], coordinates['y']
             self.regions[(x, y)] = region
             self._merge_persistent_data(x, y)
+        
+        # Process events
+        self.events = self.report_data.get('events', [])  # Add this line
 
     def _merge_persistent_data(self, x, y):
         if (x, y) in self.persistent_map_data:
@@ -64,7 +68,6 @@ class DataManager:
             print("Persistent data saved successfully.")
         except (IOError, PermissionError, json.JSONDecodeError, TypeError) as e:
             print(f"Error saving persistent data: {e}")
-
 
     def load_persistent_data(self, filename):
         """
@@ -90,7 +93,6 @@ class DataManager:
             print("No persistent data file found. Starting with empty data.")
             self.persistent_map_data = {}
 
-
     def update_region(self, x, y, data):
         """
         Update a region's data at the given coordinates.
@@ -105,7 +107,6 @@ class DataManager:
             self.regions[key].update(data)
             self.persistent_map_data[key] = self.persistent_map_data.get(key, {})
             self.persistent_map_data[key].update(data)
-
 
     def get_regions(self):
         """Return a list of all region data."""
@@ -262,3 +263,16 @@ class DataManager:
                 print(f"Error loading persistent data: {e}")
         else:
             print("No filename provided. Load operation cancelled.")
+
+    def get_events(self):
+        """Return the list of events from the report."""
+        return self.events
+
+    def get_events_for_region(self, x, y):
+        """
+        Return events specific to a region.
+        This method filters events that have a 'region' key matching the given coordinates.
+        """
+        return [event for event in self.events if 
+                event.get('region', {}).get('coordinates', {}).get('x') == x and 
+                event.get('region', {}).get('coordinates', {}).get('y') == y]

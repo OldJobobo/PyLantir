@@ -2,7 +2,7 @@
 
 from PySide6.QtWidgets import (
     QGraphicsRectItem, QGraphicsView, QGraphicsScene, QTableWidgetItem, QGraphicsPolygonItem,
-    QGraphicsEllipseItem, QGraphicsItemGroup
+    QGraphicsEllipseItem, QGraphicsItemGroup, QTableWidget
     )
 from PySide6.QtGui import QPainter, QPen, QBrush, QColor, QPolygonF
 from PySide6.QtCore import Qt, QPointF, Signal, QObject, QRectF
@@ -507,7 +507,9 @@ class HexMapView(QGraphicsView):
         self.data_table.resizeColumnsToContents()
         self.data_table.horizontalHeader().setStretchLastSection(True)
         self.data_table.setSortingEnabled(True)
-
+        self.data_table.setEditTriggers(QTableWidget.NoEditTriggers)  # Make the table read-only
+        self.data_table.setSelectionBehavior(QTableWidget.SelectRows)  # Make the table read-only
+        
         # Optionally, set alignment for all cells
         for row in range(self.data_table.rowCount()):
             for col in range(self.data_table.columnCount()):
