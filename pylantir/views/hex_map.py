@@ -76,8 +76,8 @@ class HexMapView(QGraphicsView):
                     y = region['coordinates']['y']
                     terrain = region['terrain']
                     units = region.get('units', [])
-                    structures = region.get('structures', None)
-                    settlement = region.get('settlement', None)
+                    structures = region.get('structures', 'None')
+                    settlement = region.get('settlement', 'None')
                     print(f"Processing region at ({x}, {y}) with terrain: {terrain}, structure: {structures}, settlement: {settlement}")
 
                     # Validate coordinates
@@ -152,14 +152,14 @@ class HexMapView(QGraphicsView):
                 if not self.is_valid_hex_coordinate(nx, ny):
                     continue
                 if neighbor_coord_key not in self.coordinates_to_hex_tile:
-                    neighbor_terrain = exit['region'].get('terrain', 'unknown')
+                    neighbor_terrain = exit['region'].get('terrain')
                     neighbor_hex_tile = self.create_and_place_hex(nx, ny, neighbor_terrain, [])
                     self.hex_map_tile_to_region[neighbor_hex_tile] = exit['region']
                     self.coordinates_to_hex_tile[neighbor_coord_key] = neighbor_hex_tile
 
     def update_unit_marker(self, hex_tile, units, faction_number):
         has_faction_units = any(
-            unit.get('faction', {}).get('number') == faction_number
+            unit.get('faction', {}).get('number', 'Hidden') == faction_number
             for unit in units
         )
 
@@ -409,7 +409,7 @@ class HexMapView(QGraphicsView):
         # Faction Information
         faction = unit.get('faction', {})
         faction_info = faction.get('name', 'Unknown Faction')
-        faction_number = faction.get('number', '')
+        faction_number = faction.get('number', 'Hidden')
         faction_display = f"{faction_info} (#{faction_number})" if faction_number else faction_info
 
         # Status (from 'attitude')

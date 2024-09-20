@@ -3,7 +3,7 @@ from PySide6.QtWidgets import (
     QMainWindow, QFileDialog, QMessageBox, QLineEdit, QTextEdit,
     QWidget, QVBoxLayout, QTableWidget, QSplitter, QTabWidget, QTableWidgetItem
 )
-from PySide6.QtGui import QAction, Qt
+from PySide6.QtGui import QAction, Qt, QPalette, QColor
 import os
 
 from pylantir.views.hex_map import HexMapView  # We will create this later
@@ -16,6 +16,12 @@ class MainWindow(QMainWindow):
         self.data_manager = DataManager()
         self.data_manager.load_persistent_data('persistent_map_data.json')
         self.setWindowTitle('PyLantir - Atlantis PBEM Client')
+        
+        # Create a dark palette for the main window background
+        palette = self.palette()
+        palette.setColor(QPalette.Window, QColor(40, 40, 40))  # Dark gray
+        self.setPalette(palette)
+
         # self.resize(1200, 800)
         self.init_ui()
 
@@ -71,6 +77,29 @@ class MainWindow(QMainWindow):
 
        
         self.lower_tab_widget = QTabWidget()
+        
+        # Set the stylesheet to customize the tab colors
+        self.lower_tab_widget.setStyleSheet("""
+            QTabWidget::pane { /* The area containing the tabs and content */
+                background-color: #333333;  /* Dark background */
+                border: 1px solid #444444;
+            }
+            QTabBar::tab {
+                background: #555555;  /* Inactive tab background */
+                color: #ffffff;       /* Tab text color */
+                padding: 10px;
+                margin: 2px;
+            }
+            QTabBar::tab:selected { /* Style for selected tab */
+                background: #777777;  /* Active tab background */
+                color: #00ff00;       /* Active tab text color */
+            }
+            QTabBar::tab:hover { /* Style when hovering over a tab */
+                background: #666666;
+                color: #ffff00;
+            }
+        """)
+
 
         # Create HexMapView and QTextEdit
         self.data_table = QTableWidget()
@@ -86,7 +115,39 @@ class MainWindow(QMainWindow):
                 padding: 0px;  /* Add padding around the cell content */
                 color: white;  /* Set the text color to white */
             }
+            QHeaderView::section {
+                background-color: #444444; /* Dark background for header */
+                color: white;               /* Text color for header */
+                padding: 5px;
+                font-size: 12pt;
+                border: 1px solid #666666;  /* Border for the header */
+            }
+            QTableCornerButton::section {
+                background-color: #000000;  /* Dark background for the corner */
+                border: 1px solid #666666;  /* Border for the corner */
+            }
         """)
+
+        # Access the QHeaderView directly for the horizontal header
+        header = self.data_table.horizontalHeader()
+        header.setStyleSheet("""
+            QHeaderView::section {
+                background-color: #444444; /* Dark background for header */
+                color: white;               /* Text color for header */
+                padding: 5px;
+                font-size: 12pt;
+                border: 1px solid #666666;  /* Border for the header */
+            }
+        """)
+
+        # Hide the vertical (row) header
+        self.data_table.verticalHeader().setVisible(False)
+
+        # Style the viewport to ensure it matches the table background
+        self.data_table.viewport().setStyleSheet("""
+            background-color: #333333;  /* Dark background for the viewport (including blank space after last row) */
+        """)
+
         self.lower_tab_widget.addTab(self.data_table, "Units")
 
         self.hex_map_view = HexMapView(self.data_manager, self.data_table)
@@ -96,8 +157,31 @@ class MainWindow(QMainWindow):
 
    
 
-       # Create a QTabWidget instead of a single QTextEdit
+        # Create a QTabWidget instead of a single QTextEdit
         self.tab_widget = QTabWidget()
+        
+        # Set the stylesheet to customize the tab colors
+        self.tab_widget.setStyleSheet("""
+            QTabWidget::pane { /* The area containing the tabs and content */
+                background-color: #333333;  /* Dark background */
+                border: 1px solid #444444;
+            }
+            QTabBar::tab {
+                background: #555555;  /* Inactive tab background */
+                color: #ffffff;       /* Tab text color */
+                padding: 10px;
+                margin: 2px;
+            }
+            QTabBar::tab:selected { /* Style for selected tab */
+                background: #777777;  /* Active tab background */
+                color: #00ff00;       /* Active tab text color */
+            }
+            QTabBar::tab:hover { /* Style when hovering over a tab */
+                background: #666666;
+                color: #ffff00;
+            }
+        """)
+        
 
         # Hex Data Tab
         self.hex_data_tab = QTextEdit()
@@ -240,7 +324,7 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(f"Hex: ({x}, {y})")  # Show coordinates in status bar
 
         # Display terrain type
-        terrain = hex_data.get('terrain', 'Unknown')
+        terrain = hex_data.get('terrain')
         province = hex_data.get('province', 'Unknown')
         province = province.capitalize()
         population = hex_data.get('population', {})
