@@ -10,13 +10,14 @@ from collections import defaultdict
 
 from pylantir.views.hex_tile import HexTile
 from pylantir.ui.markers import Markers
+from pylantir.data.data_manager import DataManager
 
 class HexMapView(QGraphicsView):
     # Define custom signals
     report_loaded = Signal(str)
     hex_selected = Signal(dict)  # Emits the full region data
 
-    def __init__(self, data_manager, data_table):
+    def __init__(self, data_manager: DataManager, data_table: QTableWidget):
         super().__init__()
         self.scene = QGraphicsScene(self)
         self.setScene(self.scene)
@@ -27,7 +28,6 @@ class HexMapView(QGraphicsView):
         self.selected_hex_tile = None  # Initialize selected_hex_tile
         self.hex_map_tile_to_region = {}  # Mapping from HexTile to region data
         self.coordinates_to_hex_tile = {}  # mapping from (x, y) to HexTile
-        # self.hex_to_unit_marker = {}  # mapping from HexTile to unit marker
         self.hex_to_settlement_marker = {}  # mapping from HexTile to settlement marker
         self.show_coords = True  # Boolean flag to track if hex coordinates are shown
         self.markers = Markers()  # Initialize Markers
@@ -47,8 +47,6 @@ class HexMapView(QGraphicsView):
         for item in self.scene.items():
             if isinstance(item, HexTile):
                 item.set_show_coords(self.show_coords)  # Update the visibility of labels
-
-    
 
     def load_map_data(self, regions_data):
         try:
