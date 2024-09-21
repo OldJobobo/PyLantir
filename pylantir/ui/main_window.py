@@ -147,7 +147,22 @@ class MainWindow(QMainWindow):
         self.data_table.viewport().setStyleSheet("""
             background-color: #333333;  /* Dark background for the viewport (including blank space after last row) */
         """)
+        # Define the columns you want to display
+        columns = [
+            "Structure",
+            "Unit Name",
+            "Faction Name",
+            "Status",
+            "Avoid",
+            "Guard",
+            "Contains",
+            "Skills"
+        ]
 
+        # Set table headers
+        self.data_table.setColumnCount(len(columns))
+        self.data_table.setHorizontalHeaderLabels(columns)
+        
         self.lower_tab_widget.addTab(self.data_table, "Units")
 
         self.hex_map_view = HexMapView(self.data_manager, self.data_table)

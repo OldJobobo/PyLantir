@@ -76,9 +76,12 @@ class HexMapView(QGraphicsView):
                     y = region['coordinates']['y']
                     terrain = region['terrain']
                     units = region.get('units', [])
-                    structures = region.get('structures', 'None')
-                    settlement = region.get('settlement', 'None')
+                    structures = region.get('structures', None)
+                    settlement = region.get('settlement', None)
                     print(f"Processing region at ({x}, {y}) with terrain: {terrain}, structure: {structures}, settlement: {settlement}")
+
+
+
 
                     # Validate coordinates
                     if not self.is_valid_hex_coordinate(x, y):
@@ -203,14 +206,14 @@ class HexMapView(QGraphicsView):
     def update_structure_marker(self, hex_tile, structures):
         """
         Update the structure marker on the given hex_tile.
-        
+
         Args:
             hex_tile: The hex tile object to update.
-            structure: The structure data to display. If None, remove the marker.
+            structures: The structure data associated with the hex.
         """
-        if structures:
+        if structures and isinstance(structures, list) and len(structures) > 0:
             if not hasattr(hex_tile, 'structure_marker') or hex_tile.structure_marker is None:
-                # Create the hollow box marker
+                # Create and add the structure marker
                 hollow_box = self.markers.create_hollow_box_marker(
                     box_color='white',      # Color of the box outline
                     outer_size=12,         # Size of the box
@@ -222,13 +225,15 @@ class HexMapView(QGraphicsView):
                 hollow_box.setPos(25, 0)
                 # Assign the marker to the hex_tile for future reference
                 hex_tile.structure_marker = hollow_box
+                print(f"Added structure marker to hex ({hex_tile.x_coord}, {hex_tile.y_coord})")
         else:
             if hasattr(hex_tile, 'structure_marker') and hex_tile.structure_marker:
-                # Remove the marker from the scene
+                # Remove the structure marker
                 hex_tile.structure_marker.setParentItem(None)
                 self.scene.removeItem(hex_tile.structure_marker)
                 # Clear the reference
                 hex_tile.structure_marker = None
+                print(f"Removed structure marker from hex ({hex_tile.x_coord}, {hex_tile.y_coord})")
         
         # Update the persistent map data with the structure information
         if structures:
