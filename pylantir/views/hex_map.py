@@ -4,13 +4,11 @@ from PySide6.QtWidgets import (
     QGraphicsRectItem, QGraphicsView, QGraphicsScene, QTableWidgetItem, QGraphicsPolygonItem,
     QGraphicsEllipseItem, QGraphicsItemGroup, QTableWidget
     )
-from PySide6.QtGui import QPainter
+from PySide6.QtGui import QPainter, QPen, QBrush, QColor, QPolygonF
 from PySide6.QtCore import Qt, QPointF, Signal, QObject, QRectF
 from collections import defaultdict
-
 from pylantir.views.hex_tile import HexTile
 from pylantir.ui.markers import Markers
-from pylantir.data.data_manager import DataManager
 
 class HexMapView(QGraphicsView):
     # Define custom signals
@@ -30,7 +28,6 @@ class HexMapView(QGraphicsView):
         self.coordinates_to_hex_tile = {}  # mapping from (x, y) to HexTile
         self.hex_to_settlement_marker = {}  # mapping from HexTile to settlement marker
         self.show_coords = True  # Boolean flag to track if hex coordinates are shown
-        self.markers = Markers()  # Initialize Markers
         self.init_ui()
         print(f"HexMapView initialized with data_table: {self.data_table}")
 
@@ -47,6 +44,8 @@ class HexMapView(QGraphicsView):
         for item in self.scene.items():
             if isinstance(item, HexTile):
                 item.set_show_coords(self.show_coords)  # Update the visibility of labels
+
+    
 
     def load_map_data(self, regions_data):
         try:
@@ -168,7 +167,7 @@ class HexMapView(QGraphicsView):
 
         if has_faction_units:
             if hex_tile.unit_marker is None:
-                triangle = self.markers.create_triangle_marker(color='white', size=8, circle_color='white', circle_size=5)
+                triangle = self.create_triangle_marker(color='white', size=8, circle_color='white', circle_size=5)
                 triangle.setParentItem(hex_tile)
                 triangle.setPos(0, 20)
                 hex_tile.unit_marker = triangle
@@ -184,7 +183,7 @@ class HexMapView(QGraphicsView):
     def update_settlement_marker(self, hex_tile, settlement):
         if settlement:
             if hex_tile.settlement_marker is None:
-                ring_with_dot = self.markers.create_ring_with_dot_marker(
+                ring_with_dot = self.create_ring_with_dot_marker(
                     ring_color='white', 
                     dot_color='white', 
                     outer_diameter=12, 
@@ -213,7 +212,7 @@ class HexMapView(QGraphicsView):
         """
         if structures and isinstance(structures, list) and len(structures) > 0:
             if not hasattr(hex_tile, 'structure_marker') or hex_tile.structure_marker is None:
-                # Create and add the structure marker
+                # Create the hollow box marker
                 hollow_box = self.markers.create_hollow_box_marker(
                     box_color='white',      # Color of the box outline
                     outer_size=12,         # Size of the box
