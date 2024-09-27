@@ -1,337 +1,462 @@
-# pylantir/data/data_manager.py
-
 import json
-import os
+from typing import List, Dict, Optional, Any, Union
+from pylantir.data.map_manager import MapManager
 
 class DataManager:
-    def __init__(self):
-        self.report_data = {}  # This will store the entire report
-        self.persistent_map_data = {}
-        self.regions = {}
-        self.events = []  # Add this line to store events
+    def __init__(self, map_manager: MapManager):
+        self.report_data: Optional[Dict] = None
+        self.map_manager = map_manager
+ 
 
-    def load_report(self, filename):
+    def load_report(self, filename: str) -> None:
         """
-        Load a JSON report file and process its data.
+        Load a JSON report file into the data manager.
 
-        This method reads a JSON file specified by the filename, stores its contents
-        in self.report_data, and then processes this data using the _process_report_data method.
+        This method clears any existing report data and then loads the
+        contents of the specified JSON file into self.report_data.
 
         Args:
             filename (str): The path to the JSON report file to be loaded.
 
         Raises:
-            Exception: If there's an error while reading or processing the file.
+            FileNotFoundError: If the specified file does not exist.
+            json.JSONDecodeError: If the file is not valid JSON.
+            PermissionError: If the file cannot be read due to permissions.
 
         Returns:
             None
         """
         try:
+            # Clear existing data
+            self.report_data = None
+
+            # Load and parse the JSON file
             with open(filename, 'r', encoding='utf-8') as f:
                 self.report_data = json.load(f)
-            self._process_report_data()
-            print("Report loaded successfully.")
-        except (FileNotFoundError, json.JSONDecodeError, PermissionError) as e:
-            print(f"Error loading report: {e}")
-            raise  # Re-raise the exception after logging
 
-    def _process_report_data(self):
-        self.regions.clear()
-        for region in self.report_data.get('regions', []):
-            coordinates = region['coordinates']
-            x, y = coordinates['x'], coordinates['y']
-            self.regions[(x, y)] = region
-            self._merge_persistent_data(x, y)
-        
-        # Process events
-        self.events = self.report_data.get('events', [])  # Add this line
+            print(f"Report loaded successfully from {filename}")
+            print(f"Number of regions in report: {len(self.report_data.get('regions', []))}")
+            
+            # After successfully loading the report, update the MapManager
+            self.update_map_manager()
+        except FileNotFoundError:
+            print(f"Error: File '{filename}' not found.")
+            raise
+        except json.JSONDecodeError as e:
+            print(f"Error decoding JSON in '{filename}': {str(e)}")
+            raise
+        except PermissionError:
+            print(f"Error: Permission denied when trying to read '{filename}'.")
+            raise
+        except Exception as e:
+            print(f"An unexpected error occurred while loading the report: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            raise
 
-    def _merge_persistent_data(self, x, y):
-        if (x, y) in self.persistent_map_data:
-            if (x, y) not in self.regions:
-            # If the region doesn't exist, initialize it with an empty dictionary or data from persistent map
-                self.regions[(x, y)] = {}
-            self.regions[(x, y)].update(self.persistent_map_data[(x, y)])
+    def update_map_manager(self) -> None:
+        if self.report_data is None:
+            print("No report data loaded. Please load a report first.")
+            return
 
+        regions = self.report_data.get('regions', [])
+        print(f"Updating MapManager with {len(regions)} regions")
+        for region in regions:
+            coordinates = region.get('coordinates', {})
+            x, y = coordinates.get('x'), coordinates.get('y')
+            if x is not None and y is not None:
+                self.map_manager.update_region(x, y, region)
 
-    def save_persistent_data(self, filename):
+        print("MapManager updated with the latest report data.")
+
+    def update_map_manager(self) -> None:
         """
-        Save persistent map data to a JSON file.
+        Update the MapManager with the latest report data.
+        """
+        if self.report_data is None:
+            print("No report data loaded. Please load a report first.")
+            return
 
-        Args:
-            filename (str): The path to save the JSON file.
+        regions = self.report_data.get('regions', [])
+        for region in regions:
+            coordinates = region.get('coordinates', {})
+            x, y = coordinates.get('x'), coordinates.get('y')
+            if x is not None and y is not None:
+                self.map_manager.update_region(x, y, region)
+
+        print("MapManager updated with the latest report data.")
+
+    def get_regions(self) -> List[Dict]:
+        """
+        Extract and return region data from the loaded report.
+
+        Returns:
+            List[Dict]: A list of dictionaries, each containing data for a single region.
+                        Returns an empty list if no report data is loaded or if there are no regions.
 
         Raises:
-            Exception: If there's an error while saving the file.
-    """
+            AttributeError: If report_data is None or doesn't have a 'regions' key.
+        """
         try:
-            # Convert tuple keys to strings
-            serializable_data = {f"{k[0]},{k[1]}": v for k, v in self.persistent_map_data.items()}
-            with open(filename, 'w', encoding='utf-8') as f:
-                json.dump(serializable_data, f, ensure_ascii=False, indent=4)
-            print("Persistent data saved successfully.")
-        except (IOError, PermissionError, json.JSONDecodeError, TypeError) as e:
-            print(f"Error saving persistent data: {e}")
+            if self.report_data is None:
+                print("No report data loaded. Please load a report first.")
+                return []
 
-    def load_persistent_data(self, filename):
+            regions = self.report_data.get('regions', [])
+            if not regions:
+                print("No region data found in the loaded report.")
+
+            return regions
+
+        except AttributeError as e:
+            print(f"Error accessing region data: {e}")
+            return []
+        except Exception as e:
+            print(f"An unexpected error occurred while getting regions: {e}")
+            return []
+
+    def get_faction_info(self) -> Dict[str, str]:
         """
-        Load persistent data from a JSON file.
+        Retrieve faction information from the loaded report data.
 
-        Args:
-            filename (str): Path to the JSON file.
+        Returns:
+            Dict[str, str]: A dictionary containing the faction name and number.
+                            Keys are 'name' and 'number'.
+                            Returns {'name': 'Unknown', 'number': 'Unknown'} if data is not available.
 
         Raises:
-            Exception: If there's an error while loading the file.
+            AttributeError: If report_data is None.
         """
-        if os.path.exists(filename):
-            try:
-                with open(filename, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                # Convert string keys back to tuples
-                self.persistent_map_data = {tuple(map(int, k.split(','))): v for k, v in data.items()}
-                self.regions = self.persistent_map_data
-                self._process_report_data()
-                
-                print("Persistent data loaded successfully.")
-            except Exception as e:
-                print(f"Error loading persistent data: {e}")
-        else:
-            print("No persistent data file found. Starting with empty data.")
-            self.persistent_map_data = {}
+        try:
+            if self.report_data is None:
+                print("No report data loaded. Please load a report first.")
+                return {"name": "Unknown", "number": "Unknown"}
 
-    def update_region(self, x, y, data):
+            faction_info = {
+                "name": self.report_data.get("name", "Unknown"),
+                "number": self.report_data.get("number", "Unknown")
+            }
+
+            return faction_info
+
+        except AttributeError as e:
+            print(f"Error accessing faction data: {e}")
+            return {"name": "Unknown", "number": "Unknown"}
+        except Exception as e:
+            print(f"An unexpected error occurred while getting faction info: {e}")
+            return {"name": "Unknown", "number": "Unknown"}
+
+    def save_persistent_data(self, map_manager: MapManager) -> None:
         """
-        Update a region's data at the given coordinates.
+        Save persistent data from the current report to the provided MapManager.
 
         Args:
-            x (int): X-coordinate of the region.
-            y (int): Y-coordinate of the region.
-            data (dict): New data to update the region with.
+            map_manager (MapManager): The MapManager instance to update with persistent data.
+
+        Raises:
+            AttributeError: If report_data is None.
         """
-        key = (x, y)
-        if key in self.regions:
-            self.regions[key].update(data)
-            self.persistent_map_data[key] = self.persistent_map_data.get(key, {})
-            self.persistent_map_data[key].update(data)
+        try:
+            if self.report_data is None:
+                print("No report data loaded. Please load a report first.")
+                return
 
-    def get_regions(self):
-        """Return a list of all region data."""
-        return list(self.regions.values())
+            regions = self.report_data.get('regions', [])
+            persistent_data = {}
 
-    def get_region(self, x, y):
+            for region in regions:
+                coordinates = region.get('coordinates', {})
+                x, y = coordinates.get('x'), coordinates.get('y')
+                if x is not None and y is not None:
+                    key = f"{x},{y}"
+                    persistent_data[key] = {
+                        'terrain': region.get('terrain'),
+                        'province': region.get('province'),
+                        'settlement': region.get('settlement'),
+                        'population': region.get('population'),
+                        # Add any other persistent data you want to keep
+                    }
+
+            map_manager.update_map_data(persistent_data)
+            print("Persistent data saved to MapManager successfully.")
+
+        except AttributeError as e:
+            print(f"Error accessing report data: {e}")
+        except Exception as e:
+            print(f"An unexpected error occurred while saving persistent data: {e}")
+
+    def get_date_info(self) -> Dict[str, str]:
         """
-        Retrieve the region data for given coordinates.
-
-        Args:
-            x (int): X-coordinate of the region.
-            y (int): Y-coordinate of the region.
+        Retrieve date information from the loaded report data.
 
         Returns:
-            dict: Region data or None if not found.
+            Dict[str, str]: A dictionary containing the month and year of the report.
+                            Keys are 'month' and 'year'.
+                            Returns {'month': 'Unknown', 'year': 'Unknown'} if data is not available.
+
+        Raises:
+            AttributeError: If report_data is None.
         """
-        return self.regions.get((x, y))
+        try:
+            if self.report_data is None:
+                print("No report data loaded. Please load a report first.")
+                return {"month": "Unknown", "year": "Unknown"}
 
-    def get_faction_info(self):
-        """
-        Retrieve faction information from the report data.
+            date_info = self.report_data.get("date", {})
+            return {
+                "month": date_info.get("month", "Unknown"),
+                "year": str(date_info.get("year", "Unknown"))
+            }
 
-        Returns:
-            dict: Faction name and number, with 'Unknown' as default.
-        """
-        return {
-            "name": self.report_data.get("name", "Unknown"),
-            "number": self.report_data.get("number", "Unknown")
-        }
+        except AttributeError as e:
+            print(f"Error accessing date information: {e}")
+            return {"month": "Unknown", "year": "Unknown"}
+        except Exception as e:
+            print(f"An unexpected error occurred while getting date info: {e}")
+            return {"month": "Unknown", "year": "Unknown"}
 
-    def get_date_info(self):
-        """
-        Retrieve date information from the report data.
-
-        Returns:
-            dict: Month and year, with 'Unknown' as default.
-        """
-        date_info = self.report_data.get("date", {})
-        return {
-            "month": date_info.get("month", "Unknown"),
-            "year": date_info.get("year", "Unknown")
-        }
-
-    def get_engine_info(self):
-        engine_info = self.report_data.get("engine", {})
-        return {
-            "ruleset": engine_info.get("ruleset", "Unknown"),
-            "ruleset_version": engine_info.get("ruleset_version", "Unknown"),
-            "version": engine_info.get("version", "Unknown")
-        }
-
-    def get_attitudes(self):
-        attitudes = self.report_data.get("attitudes", {})
-        return {
-            "default": attitudes.get("default", "Unknown").capitalize()
-        }
-
-    def get_administrative_settings(self):
-        admin = self.report_data.get("administrative", {})
-        return {
-            "password_unset": admin.get("password_unset", False),
-            "show_unit_attitudes": admin.get("show_unit_attitudes", False),
-            "times_sent": admin.get("times_sent", True)
-        }
-    
-    def get_markets(self, x, y):
-        """
-        Retrieve the markets for the region at coordinates (x, y).
-
-        Parameters:
-            x (int): The x-coordinate of the region.
-            y (int): The y-coordinate of the region.
-
-        Returns:
-            dict: A dictionary containing 'for_sale' and 'wanted' markets.
-                  Returns None if the region does not exist or has no markets.
-        """
-        region = self.get_region(x, y)
-        if not region:
-            print(f"No region found at coordinates ({x}, {y}).")
-            return None
-
-        markets = region.get('markets')
-        if not markets:
-            print(f"Region at ({x}, {y}) has no markets data.")
-            return None
-
-        return markets
-    
-    def get_settlement(self, x, y):
-        """
-        Retrieve the settlement information for the region at coordinates (x, y).
-
-        Parameters:
-            x (int): The x-coordinate of the region.
-            y (int): The y-coordinate of the region.
-
-        Returns:
-            dict: A dictionary containing settlement details (e.g., name, size).
-                  Returns None if the region does not exist or has no settlement.
-        """
-        region = self.get_region(x, y)
-        if not region:
-            print(f"No region found at coordinates ({x}, {y}).")
-            return None
-
-        settlement = region.get('settlement')
-        if not settlement:
-            print(f"Region at ({x}, {y}) has no settlement data.")
-            return None
-
-        return settlement
-
-    def save_persistent_data_to_file(self, filename):
-        """
-        Save the persistent map data to a JSON file specified by the filename.
-
-        Args:
-            filename (str): The path to the JSON file where data will be saved.
-        """
-        if filename:
-            try:
-                self.save_persistent_data(filename)
-                print(f"Persistent data saved to {filename}.")
-            except Exception as e:
-                print(f"Error saving persistent data: {e}")
-        else:
-            print("No filename provided. Save operation cancelled.")
-
-    def load_persistent_data_from_file(self, filename):
-        """
-        Load persistent map data from a JSON file specified by the filename.
-        Clears all current loaded data and loads the saved data from the file.
-
-        Args:
-            filename (str): The path to the JSON file from which data will be loaded.
-        """
-        if filename:
-            try:
-                self.persistent_map_data.clear()
-                self.regions.clear()
-                self.load_persistent_data(filename)
-                self._process_report_data()
-                print(f"Persistent data loaded from {filename}.")
-
-                # After loading, update the hex map and main window if necessary
-                # For example:
-                # if hasattr(self, 'hex_map'):
-                #     self.hex_map.update_map(self.regions)
-                # if hasattr(self, 'main_window'):
-                #     self.main_window.refresh()
-
-            except Exception as e:
-                print(f"Error loading persistent data: {e}")
-        else:
-            print("No filename provided. Load operation cancelled.")
-
-    def get_events(self):
-        """Return the list of events from the report."""
-        return self.events
-
-    def get_events_for_region(self, x, y):
-        """
-        Return events specific to a region.
-        This method filters events that have a 'region' key matching the given coordinates.
-        """
-        return [event for event in self.events if 
-                event.get('region', {}).get('coordinates', {}).get('x') == x and 
-                event.get('region', {}).get('coordinates', {}).get('y') == y]
-
-    def get_events_for_units(self, unit_numbers):
-        """
-        Retrieve events associated with specific units.
-        
-        Args:
-            unit_numbers (list): A list of unit numbers.
-        
-        Returns:
-            list: A list of events associated with the given units.
-        """
-        return [
-            event for event in self.events
-            if event.get('unit', {}).get('number') in unit_numbers
-        ]
-
-    def get_all_events_for_hex(self, x, y):
+    def get_all_events_for_hex(self, x: int, y: int) -> List[Dict[str, Any]]:
         """
         Retrieve all unique events associated with a specific hex.
-        
+
         Args:
             x (int): X-coordinate of the hex.
             y (int): Y-coordinate of the hex.
-        
+
         Returns:
-            list: A list of unique events relevant to the hex.
+            List[Dict[str, Any]]: A list of unique events relevant to the hex.
+                                  Returns an empty list if no events are found or if there's an error.
+
+        Raises:
+            AttributeError: If report_data is None.
         """
-        # Fetch region-based events
-        region_events = self.get_events_for_region(x, y)
-        
-        # Fetch units in the hex
-        region = self.get_region(x, y)
-        if region:
-            units = region.get('units', [])
-        else:
-            units = []
-        unit_numbers = [unit.get('number') for unit in units if unit.get('number') is not None]
-        
-        # Fetch unit-based events
-        unit_events = self.get_events_for_units(unit_numbers)
-        
-        # Combine events and remove duplicates
-        unique_events = []
-        seen_messages = set()  # Assuming 'message' is unique for each event
-        
-        for event in region_events + unit_events:
-            message = event.get('message')
-            if message and message not in seen_messages:
-                unique_events.append(event)
-                seen_messages.add(message)
-        
-        return unique_events
+        try:
+            if self.report_data is None:
+                print("No report data loaded. Please load a report first.")
+                return []
+
+            all_events = self.report_data.get('events', [])
+            hex_events = []
+
+            # Get region-based events
+            hex_events.extend([
+                event for event in all_events
+                if event.get('region', {}).get('coordinates', {}).get('x') == x
+                and event.get('region', {}).get('coordinates', {}).get('y') == y
+            ])
+
+            # Get unit-based events
+            units_in_hex = self.map_manager.get_units_in_region(x, y)
+            unit_numbers = [unit.get('number') for unit in units_in_hex if unit.get('number') is not None]
+            hex_events.extend([
+                event for event in all_events
+                if event.get('unit', {}).get('number') in unit_numbers
+            ])
+
+            # Remove duplicates while preserving order
+            unique_events = []
+            seen_messages = set()
+            for event in hex_events:
+                message = event.get('message')
+                if message and message not in seen_messages:
+                    unique_events.append(event)
+                    seen_messages.add(message)
+
+            return unique_events
+
+        except AttributeError as e:
+            print(f"Error accessing report data: {e}")
+            return []
+        except Exception as e:
+            print(f"An unexpected error occurred while getting events for hex ({x}, {y}): {e}")
+            return []
+
+    def get_orders_for_hex(self, x: int, y: int) -> List[Dict[str, Any]]:
+        """
+        Retrieve orders for all units in a specific hex.
+
+        Args:
+            x (int): X-coordinate of the hex.
+            y (int): Y-coordinate of the hex.
+
+        Returns:
+            List[Dict[str, Any]]: A list of dictionaries containing unit names, numbers, and their orders.
+        """
+        try:
+            if self.report_data is None:
+                print("No report data loaded. Please load a report first.")
+                return []
+
+            regions = self.report_data.get('regions', [])
+            target_region = next((region for region in regions 
+                                  if region.get('coordinates', {}).get('x') == x 
+                                  and region.get('coordinates', {}).get('y') == y), None)
+
+            if not target_region:
+                print(f"No region found for coordinates ({x}, {y})")
+                return []
+
+            units = target_region.get('units', [])
+            orders = []
+
+            for unit in units:
+                if unit.get('own_unit', False):  # Only include orders for own units
+                    unit_orders = unit.get('orders', [])
+                    orders.append({
+                        'unit_name': unit.get('name', 'Unknown Unit'),
+                        'unit_number': unit.get('number', 'Unknown'),
+                        'orders': unit_orders
+                    })
+
+            return orders
+
+        except Exception as e:
+            print(f"An error occurred while getting orders for hex ({x}, {y}): {e}")
+            return []
+
+    def get_engine_info(self) -> Dict[str, str]:
+        """
+        Retrieve engine information from the loaded report data.
+
+        Returns:
+            Dict[str, str]: A dictionary containing the engine information.
+                            Keys are 'ruleset', 'ruleset_version', and 'version'.
+                            Returns default values if data is not available.
+
+        Raises:
+            AttributeError: If report_data is None.
+        """
+        try:
+            if self.report_data is None:
+                print("No report data loaded. Please load a report first.")
+                return {
+                    "ruleset": "Unknown",
+                    "ruleset_version": "Unknown",
+                    "version": "Unknown"
+                }
+
+            engine_info = self.report_data.get("engine", {})
+            return {
+                "ruleset": engine_info.get("ruleset", "Unknown"),
+                "ruleset_version": engine_info.get("ruleset_version", "Unknown"),
+                "version": engine_info.get("version", "Unknown")
+            }
+
+        except AttributeError as e:
+            print(f"Error accessing engine information: {e}")
+            return {
+                "ruleset": "Unknown",
+                "ruleset_version": "Unknown",
+                "version": "Unknown"
+            }
+        except Exception as e:
+            print(f"An unexpected error occurred while getting engine info: {e}")
+            return {
+                "ruleset": "Unknown",
+                "ruleset_version": "Unknown",
+                "version": "Unknown"
+            }
+
+    def get_attitudes(self) -> Dict[str, Union[str, List[Dict[str, Union[str, int]]]]]:
+        """
+        Retrieve attitude information from the loaded report data.
+
+        Returns:
+            Dict[str, Union[str, List[Dict[str, Union[str, int]]]]]: A dictionary containing the attitude information.
+                Keys are 'default', 'ally', 'friendly', 'neutral', 'unfriendly', and 'hostile'.
+                The 'default' value is a string, while others are lists of dictionaries with 'name' and 'number' keys.
+                Returns default values if data is not available.
+
+        Raises:
+            AttributeError: If report_data is None.
+        """
+        try:
+            if self.report_data is None:
+                print("No report data loaded. Please load a report first.")
+                return {
+                    "default": "neutral",
+                    "ally": [],
+                    "friendly": [],
+                    "neutral": [],
+                    "unfriendly": [],
+                    "hostile": []
+                }
+
+            attitudes = self.report_data.get("attitudes", {})
+            return {
+                "default": attitudes.get("default", "neutral"),
+                "ally": attitudes.get("ally", []),
+                "friendly": attitudes.get("friendly", []),
+                "neutral": attitudes.get("neutral", []),
+                "unfriendly": attitudes.get("unfriendly", []),
+                "hostile": attitudes.get("hostile", [])
+            }
+
+        except AttributeError as e:
+            print(f"Error accessing attitude information: {e}")
+            return {
+                "default": "neutral",
+                "ally": [],
+                "friendly": [],
+                "neutral": [],
+                "unfriendly": [],
+                "hostile": []
+            }
+        except Exception as e:
+            print(f"An unexpected error occurred while getting attitude info: {e}")
+            return {
+                "default": "neutral",
+                "ally": [],
+                "friendly": [],
+                "neutral": [],
+                "unfriendly": [],
+                "hostile": []
+            }
+
+    def get_administrative_settings(self) -> Dict[str, Union[str, bool]]:
+        """
+        Retrieve administrative settings from the loaded report data.
+
+        Returns:
+            Dict[str, Union[str, bool]]: A dictionary containing the administrative settings.
+                Keys are 'email', 'password_unset', 'show_unit_attitudes', and 'times_sent'.
+                Returns default values if data is not available.
+
+        Raises:
+            AttributeError: If report_data is None.
+        """
+        try:
+            if self.report_data is None:
+                print("No report data loaded. Please load a report first.")
+                return {
+                    "email": "",
+                    "password_unset": False,
+                    "show_unit_attitudes": False,
+                    "times_sent": False
+                }
+
+            admin_settings = self.report_data.get("administrative", {})
+            return {
+                "email": admin_settings.get("email", ""),
+                "password_unset": admin_settings.get("password_unset", False),
+                "show_unit_attitudes": admin_settings.get("show_unit_attitudes", False),
+                "times_sent": admin_settings.get("times_sent", False)
+            }
+
+        except AttributeError as e:
+            print(f"Error accessing administrative settings: {e}")
+            return {
+                "email": "",
+                "password_unset": False,
+                "show_unit_attitudes": False,
+                "times_sent": False
+            }
+        except Exception as e:
+            print(f"An unexpected error occurred while getting administrative settings: {e}")
+            return {
+                "email": "",
+                "password_unset": False,
+                "show_unit_attitudes": False,
+                "times_sent": False
+            }
 

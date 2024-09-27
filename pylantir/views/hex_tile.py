@@ -97,8 +97,7 @@ class HexTile(QGraphicsItem):
     
     def set_show_coords(self, show):
         """Toggle the display of hex coordinates."""
-        self.hex_map_view.show_coords = False
-        
+        self.hex_map_view.show_coords = show
         self.update()  # Trigger a repaint to update the coordinate label visibility
 
     def set_terrain(self, terrain_type):

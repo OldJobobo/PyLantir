@@ -7,7 +7,7 @@ from PySide6.QtGui import QAction, Qt, QPalette, QColor
 import os
 
 from pylantir.views.hex_map import HexMapView  # We will create this later
-from pylantir.data.data_mngr import DataMngr
+from pylantir.data.data_manager import DataManager
 from pylantir.data.map_manager import MapManager
 
 class MainWindow(QMainWindow):
@@ -15,7 +15,7 @@ class MainWindow(QMainWindow):
         """Initialize the main window and its components."""
         super().__init__()
         self.map_manager = MapManager()
-        self.data_manager = DataMngr(self.map_manager)
+        self.data_manager = DataManager(self.map_manager)
         self.setWindowTitle('PyLantir - Atlantis PBEM Client')
         
         # Create a dark palette for the main window background
@@ -701,6 +701,7 @@ class MainWindow(QMainWindow):
         self.display_parsed_data()
 
     def display_parsed_data(self):
+        self.hex_data_tab.clear()  # Clear previous content
         """Display faction, date, and engine information in the hex_data_tab widget."""
         # Display faction information
         faction_info = self.data_manager.get_faction_info()

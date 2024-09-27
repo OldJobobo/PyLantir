@@ -9,14 +9,14 @@ from PySide6.QtCore import Qt, QPointF, Signal, QObject, QRectF
 from collections import defaultdict
 from pylantir.views.hex_tile import HexTile
 from pylantir.ui.markers import Markers
-from pylantir.data.data_mngr import DataMngr  # Add this import
+from pylantir.data.data_manager import DataManager  # Add this import
 from pylantir.data.map_manager import MapManager
 class HexMapView(QGraphicsView):
     # Define custom signals
     report_loaded = Signal(str)
     hex_selected = Signal(dict)  # Emits the full region data
 
-    def __init__(self, map_manager: MapManager, data_manager: DataMngr, data_table: QTableWidget):
+    def __init__(self, map_manager: MapManager, data_manager: DataManager, data_table: QTableWidget):
         super().__init__()
         self.scene = QGraphicsScene(self)
         self.setScene(self.scene)
