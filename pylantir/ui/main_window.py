@@ -7,14 +7,15 @@ from PySide6.QtGui import QAction, Qt, QPalette, QColor
 import os
 
 from pylantir.views.hex_map import HexMapView  # We will create this later
-from pylantir.data.data_manager import DataManager
+from pylantir.data.data_mngr import DataMngr
+from pylantir.data.map_manager import MapManager
 
 class MainWindow(QMainWindow):
     def __init__(self):
         """Initialize the main window and its components."""
         super().__init__()
-        self.data_manager = DataManager()
-        self.data_manager.load_persistent_data('persistent_map_data.json')
+        self.map_manager = MapManager()
+        self.data_manager = DataMngr(self.map_manager)
         self.setWindowTitle('PyLantir - Atlantis PBEM Client')
         
         # Create a dark palette for the main window background
@@ -22,7 +23,6 @@ class MainWindow(QMainWindow):
         palette.setColor(QPalette.Window, QColor(40, 40, 40))  # Dark gray
         self.setPalette(palette)
 
-        # self.resize(1200, 800)
         self.init_ui()
 
     def init_ui(self):
@@ -165,7 +165,7 @@ class MainWindow(QMainWindow):
         
         self.lower_tab_widget.addTab(self.data_table, "Units")
 
-        self.hex_map_view = HexMapView(self.data_manager, self.data_table)
+        self.hex_map_view = HexMapView(self.map_manager, self.data_manager, self.data_table)
         self.hex_map_view.setStyleSheet("background-color: #1F1F1F; border: 1px solid grey;")
         self.hex_map_view.report_loaded.connect(self.update_status_bar)
         self.hex_map_view.hex_selected.connect(self.display_hex_data)
@@ -533,38 +533,38 @@ class MainWindow(QMainWindow):
     def populate_orders_tab(self, hex_data):
         """Populate the Orders tab with orders from units in the hex."""
         self.orders_tab.setRowCount(0)
-        self.orders_tab.setColumnCount(2)
-        self.orders_tab.setHorizontalHeaderLabels(["Unit Name", "Order"])
+        self.orders_tab.setColumnCount(3)
+        self.orders_tab.setHorizontalHeaderLabels(["Unit Name", "Unit Number", "Orders"])
 
-        # Collect all orders from units
-        orders = []
-        units = hex_data.get('units', [])
-        for unit in units:
-            unit_name = unit.get('name', 'Unknown Unit')
-            unit_orders = unit.get('orders', [])
-            for order in unit_orders:
-                order_text = order.get('order', 'No Order Description')
-                orders.append((unit_name, order_text))
+        coordinates = hex_data.get('coordinates', {})
+        x, y = coordinates.get('x'), coordinates.get('y')
+
+        if x is None or y is None:
+            print(f"Warning: Invalid coordinates in hex_data: {coordinates}")
+            return
+
+        orders = self.data_manager.get_orders_for_hex(x, y)
 
         if orders:
-            self.orders_tab.setRowCount(len(orders))
-            for row, (unit_name, order_text) in enumerate(orders):
-                # Unit Name
-                unit_item = QTableWidgetItem(unit_name)
-                unit_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-                self.orders_tab.setItem(row, 0, unit_item)
+            for unit_order in orders:
+                unit_name = unit_order['unit_name']
+                unit_number = unit_order['unit_number']
+                unit_orders = unit_order['orders']
 
-                # Order
-                order_item = QTableWidgetItem(order_text)
-                order_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-                self.orders_tab.setItem(row, 1, order_item)
+                for order in unit_orders:
+                    row_position = self.orders_tab.rowCount()
+                    self.orders_tab.insertRow(row_position)
+                    
+                    self.orders_tab.setItem(row_position, 0, QTableWidgetItem(str(unit_name)))
+                    self.orders_tab.setItem(row_position, 1, QTableWidgetItem(str(unit_number)))
+                    self.orders_tab.setItem(row_position, 2, QTableWidgetItem(str(order)))
 
-                print(f"Set Orders tab row {row}: Unit='{unit_name}', Order='{order_text}'")
+            print(f"Set Orders tab with {self.orders_tab.rowCount()} rows for region ({x}, {y})")
         else:
-            # No orders to display
             self.orders_tab.setRowCount(1)
             self.orders_tab.setItem(0, 0, QTableWidgetItem("No Orders"))
             self.orders_tab.setItem(0, 1, QTableWidgetItem(""))
+            self.orders_tab.setItem(0, 2, QTableWidgetItem(""))
             print("No orders to display in Orders tab.")
 
         # Adjust the table for better readability
@@ -682,6 +682,20 @@ class MainWindow(QMainWindow):
 
     def update_views(self):
         """Update the hex map view with the latest region data."""
+        regions = self.map_manager.get_map_data()  # Use MapManager data instead of DataMngr
+        self.hex_map_view.load_map_data(regions)
+        self.display_parsed_data()
+
+    def closeEvent(self, event):
+        """
+        This method can be simplified as we're continuously updating the MapManager.
+        We might want to add a method to save the MapManager data to a file here in the future.
+        """
+        # self.map_manager.save_to_file("persistent_data.json")  # Implement this method if needed
+        super().closeEvent(event)
+
+    def update_views(self):
+        """Update the hex map view with the latest region data."""
         regions = self.data_manager.get_regions()
         self.hex_map_view.load_map_data(regions)
         self.display_parsed_data()
@@ -718,8 +732,5 @@ class MainWindow(QMainWindow):
             'PyLantir\n\nAn open-source client for the Atlantis PBEM game.\n\nDeveloped by J. Stuart Brown.'
         )
 
-    def closeEvent(self, event):
-        """Save persistent data when the application is closed."""
-        self.data_manager.save_persistent_data('persistent_map_data.json')
-        super().closeEvent(event)
+
 

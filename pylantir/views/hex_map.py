@@ -9,18 +9,21 @@ from PySide6.QtCore import Qt, QPointF, Signal, QObject, QRectF
 from collections import defaultdict
 from pylantir.views.hex_tile import HexTile
 from pylantir.ui.markers import Markers
-
+from pylantir.data.data_mngr import DataMngr  # Add this import
+from pylantir.data.map_manager import MapManager
 class HexMapView(QGraphicsView):
     # Define custom signals
     report_loaded = Signal(str)
     hex_selected = Signal(dict)  # Emits the full region data
 
-    def __init__(self, data_manager: DataManager, data_table: QTableWidget):
+    def __init__(self, map_manager: MapManager, data_manager: DataMngr, data_table: QTableWidget):
         super().__init__()
         self.scene = QGraphicsScene(self)
         self.setScene(self.scene)
-        self.data_manager = data_manager  # DataManager instance passed in constructor
+        self.map_manager = map_manager  # MapManager instance passed in constructor
+        self.data_manager = data_manager  # DataMngr instance passed in constructor
         self.data_table = data_table
+        self.markers = Markers()
         self.dragging = False  # Track if we are dragging for panning
         self.last_mouse_pos = QPointF()  # Last mouse position during dragging
         self.selected_hex_tile = None  # Initialize selected_hex_tile
@@ -63,48 +66,44 @@ class HexMapView(QGraphicsView):
             # Group regions by x_coord
             columns = defaultdict(list)
             for region in regions_data:
-                x = region['coordinates']['x']
-                columns[x].append(region)
+                if not isinstance(region, dict):
+                    print(f"Warning: Invalid region data: {region}")
+                    continue
+                x = region.get('coordinates', {}).get('x')
+                if x is not None:
+                    columns[x].append(region)
 
             # Process regions
             for x in sorted(columns.keys()):
-                sorted_regions = sorted(columns[x], key=lambda r: r['coordinates']['y'])
-                print(f"Column {x} sorted y-coordinates: {[r['coordinates']['y'] for r in sorted_regions]}")
+                sorted_regions = sorted(columns[x], key=lambda r: r.get('coordinates', {}).get('y'))
+                print(f"Column {x} sorted y-coordinates: {[r.get('coordinates', {}).get('y') for r in sorted_regions]}")
                 for region in sorted_regions:
-                    x = region['coordinates']['x']
-                    y = region['coordinates']['y']
-                    terrain = region['terrain']
+                    coordinates = region.get('coordinates', {})
+                    x, y = coordinates.get('x'), coordinates.get('y')
+                    terrain = region.get('terrain', 'unknown')
+                    structures = region.get('structures')
+                    settlement = region.get('settlement')
+                    print(f"Processing region at ({x}, {y}) with terrain: {terrain}, structures: {structures}, settlement: {settlement}")
+
                     units = region.get('units', [])
-                    structures = region.get('structures', None)
-                    settlement = region.get('settlement', None)
-                    print(f"Processing region at ({x}, {y}) with terrain: {terrain}, structure: {structures}, settlement: {settlement}")
-
-
-
+                    if units is None:
+                        units = []
+                    print(f"Units in region: {len(units)}")
 
                     # Validate coordinates
-                    if not self.is_valid_hex_coordinate(x, y):
+                    if x is None or y is None or not self.is_valid_hex_coordinate(x, y):
+                        print(f"Invalid coordinates: ({x}, {y})")
                         continue
 
-                    coord_key = (x, y)
-
-                    if coord_key in self.coordinates_to_hex_tile:
-                        # Update existing HexTile
-                        hex_tile = self.coordinates_to_hex_tile[coord_key]
-                        hex_tile.set_terrain(terrain)
-                        hex_tile.set_units(units)
-                        self.hex_map_tile_to_region[hex_tile] = region  # Update the region data
-                    else:
-                        # Create new HexTile
-                        hex_tile = HexTile(x, y, terrain, hex_map_view=self, units=units)
-                        self.scene.addItem(hex_tile)
-                        self.hex_map_tile_to_region[hex_tile] = region
-                        self.coordinates_to_hex_tile[coord_key] = hex_tile
+                    # Create and place hex tile
+                    hex_tile = self.create_and_place_hex(x, y, terrain, units)
+                    self.hex_map_tile_to_region[hex_tile] = region
+                    self.coordinates_to_hex_tile[(x, y)] = hex_tile
 
                     # Handle unit markers
                     self.update_unit_marker(hex_tile, units, faction_number)
 
-                    # Handle settlement markers
+                    # Update settlement marker
                     self.update_settlement_marker(hex_tile, settlement)
 
                     # Handle structure markers
@@ -125,6 +124,8 @@ class HexMapView(QGraphicsView):
             self.report_loaded.emit("Map data loaded successfully.")
         except Exception as e:
             print(f"Error loading map data: {e}")
+            import traceback
+            traceback.print_exc()
             self.report_loaded.emit("Error loading map data. (see console for details)")
 
     def clear_all_unit_markers(self):
@@ -138,7 +139,7 @@ class HexMapView(QGraphicsView):
         self.data_table.setRowCount(0)
 
     def update_hex_data(self, x, y, data):
-        self.data_manager.update_region(x, y, data)
+        self.map_manager.update_region(x, y, data)  # Use map_manager instead of data_manager
         hex_tile = self.coordinates_to_hex_tile.get((x, y))
         if hex_tile:
             hex_tile.update_from_data(data)
@@ -167,7 +168,7 @@ class HexMapView(QGraphicsView):
 
         if has_faction_units:
             if hex_tile.unit_marker is None:
-                triangle = self.create_triangle_marker(color='white', size=8, circle_color='white', circle_size=5)
+                triangle = self.markers.create_triangle_marker(color='white', size=8, circle_color='white', circle_size=5)
                 triangle.setParentItem(hex_tile)
                 triangle.setPos(0, 20)
                 hex_tile.unit_marker = triangle
@@ -183,7 +184,7 @@ class HexMapView(QGraphicsView):
     def update_settlement_marker(self, hex_tile, settlement):
         if settlement:
             if hex_tile.settlement_marker is None:
-                ring_with_dot = self.create_ring_with_dot_marker(
+                ring_with_dot = self.markers.create_ring_with_dot_marker(
                     ring_color='white', 
                     dot_color='white', 
                     outer_diameter=12, 
