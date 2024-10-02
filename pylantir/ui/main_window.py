@@ -9,6 +9,7 @@ import os
 from pylantir.views.hex_map import HexMapView  # We will create this later
 from pylantir.data.data_manager import DataManager
 from pylantir.data.map_manager import MapManager
+from pylantir.data.game_manager import GameManager
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -16,6 +17,8 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.map_manager = MapManager()
         self.data_manager = DataManager(self.map_manager)
+        self.game_manager = GameManager(self.data_manager, self.map_manager)
+
         self.setWindowTitle('PyLantir - Atlantis PBEM Client')
         
         # Create a dark palette for the main window background
@@ -279,9 +282,8 @@ class MainWindow(QMainWindow):
             filter="JSON Files (*.json)"
         )
         if filename:
-            self.data_manager.save_persistent_data_to_file(filename)
-            # Optionally, show a confirmation message to the user
-            QMessageBox.information(self, "Save Successful", f"Game data saved to {filename}.")
+            self.game_manager.save_game_data(filename)
+            self.statusBar().showMessage(f"Game data saved to {filename}")
 
     def load_game_data(self):
         """Open a load file dialog and load the persistent game data."""
@@ -291,12 +293,24 @@ class MainWindow(QMainWindow):
             filter="JSON Files (*.json)"
         )
         if filename:
-            self.data_manager.load_persistent_data_from_file(filename)
-            # Update UI components after loading new data
-            regions = self.data_manager.get_regions()
-            self.hex_map_view.load_map_data(regions)
+            self.game_manager.load_game_data(filename)
+            
+            # Retrieve map data as a list of regions
+            map_data = self.game_manager.get_map_data()
+            
+            # Retrieve report data if needed elsewhere
+            report_data = self.game_manager.data_manager.get_report_data()
+            
+            # Pass only the map data to HexMapView
+            self.hex_map_view.load_map_data(map_data)
+            
+            # Optionally, handle report_data as needed
             self.display_parsed_data()
+            
             self.statusBar().showMessage(f"Game data loaded from {filename}")
+        else:
+            self.statusBar().showMessage("No game data loaded.")
+            QMessageBox.warning(self, 'No File', 'No file was selected.')
 
     def toggle_hex_coords(self):
         """Toggle the hex coordinates labels on and off."""

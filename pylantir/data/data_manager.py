@@ -69,23 +69,7 @@ class DataManager:
 
         print("MapManager updated with the latest report data.")
 
-    def update_map_manager(self) -> None:
-        """
-        Update the MapManager with the latest report data.
-        """
-        if self.report_data is None:
-            print("No report data loaded. Please load a report first.")
-            return
-
-        regions = self.report_data.get('regions', [])
-        for region in regions:
-            coordinates = region.get('coordinates', {})
-            x, y = coordinates.get('x'), coordinates.get('y')
-            if x is not None and y is not None:
-                self.map_manager.update_region(x, y, region)
-
-        print("MapManager updated with the latest report data.")
-
+   
     def get_regions(self) -> List[Dict]:
         """
         Extract and return region data from the loaded report.
@@ -459,4 +443,22 @@ class DataManager:
                 "show_unit_attitudes": False,
                 "times_sent": False
             }
+    
+    def get_report_data(self) -> Dict[str, Any]:
+        """
+        Get the report data from the loaded report.
+
+        Returns:
+            Dict[str, Any]: A dictionary containing the report data.
+        """
+        return self.report_data
+
+    def set_report_data(self, report_data: Dict[str, Any]) -> None:
+        """
+        Set the report data.
+
+        Args:
+          report_data (Dict[str, Any]): A dictionary containing the report data.
+        """
+        self.report_data = report_data
 

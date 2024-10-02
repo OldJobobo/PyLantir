@@ -6,11 +6,23 @@ class MapManager:
         self.map_data = {}
 
 
-    def load_map_data(self, map_data):
+    def set_map_data(self, map_data: Dict[str, Any]) -> None:
+        """
+        Set the map data.
+
+        Args:
+            map_data (Dict[str, Any]): A dictionary containing the map data.
+        """
         self.map_data = map_data
 
-    def get_map_data(self):
-        return self.map_data
+    def get_map_data(self) -> Dict[str, Any]:
+        """
+        Get the map data.
+
+        Returns:
+            Dict[str, Any]: A dictionary containing the map data.
+        """
+        return self.map_data    
 
     def get_region(self, x, y):
         return self.map_data.get(f"{x},{y}")

@@ -63,6 +63,8 @@ class HexMapView(QGraphicsView):
             self.clear_all_unit_markers()
             self.clear_data_table()
 
+            # self.update_map_data(regions_data)
+
             # Group regions by x_coord
             columns = defaultdict(list)
             for region in regions_data:
@@ -143,6 +145,54 @@ class HexMapView(QGraphicsView):
         hex_tile = self.coordinates_to_hex_tile.get((x, y))
         if hex_tile:
             hex_tile.update_from_data(data)
+
+    def update_map_data(self, regions_data):
+         # Group regions by x_coord
+            columns = defaultdict(list)
+            for region in regions_data:
+                if not isinstance(region, dict):
+                    print(f"Warning: Invalid region data: {region}")
+                    continue
+                x = region.get('coordinates', {}).get('x')
+                if x is not None:
+                    columns[x].append(region)
+
+            # Process regions
+            for x in sorted(columns.keys()):
+                sorted_regions = sorted(columns[x], key=lambda r: r.get('coordinates', {}).get('y'))
+                print(f"Column {x} sorted y-coordinates: {[r.get('coordinates', {}).get('y') for r in sorted_regions]}")
+                for region in sorted_regions:
+                    coordinates = region.get('coordinates', {})
+                    x, y = coordinates.get('x'), coordinates.get('y')
+                    terrain = region.get('terrain', 'unknown')
+                    structures = region.get('structures')
+                    settlement = region.get('settlement')
+                    print(f"Processing region at ({x}, {y}) with terrain: {terrain}, structures: {structures}, settlement: {settlement}")
+
+                    units = region.get('units', [])
+                    if units is None:
+                        units = []
+                    print(f"Units in region: {len(units)}")
+
+                    # Validate coordinates
+                    if x is None or y is None or not self.is_valid_hex_coordinate(x, y):
+                        print(f"Invalid coordinates: ({x}, {y})")
+                        continue
+
+                    # Create and place hex tile
+                    hex_tile = self.create_and_place_hex(x, y, terrain, units)
+                    self.hex_map_tile_to_region[hex_tile] = region
+                    self.coordinates_to_hex_tile[(x, y)] = hex_tile
+
+                    # Update settlement marker
+                    self.update_settlement_marker(hex_tile, settlement)
+
+                    # Handle structure markers
+                    self.update_structure_marker(hex_tile, structures)
+
+                    # Update the persistent map data
+                    self.update_hex_data(x, y, region)
+
 
     def process_exits(self, regions_data):
         for region in regions_data:
@@ -481,3 +531,10 @@ class HexMapView(QGraphicsView):
                 item.setToolTip(detailed_skills)
             self.data_table.setItem(row, col, item)
             print(f"Set row {row}, column {col} to {data}")
+
+    def refresh_map(self):
+        self.clear_all_unit_markers()
+        self.clear_data_table()
+        self.load_map_data(self.map_manager.get_map_data())
+
+
